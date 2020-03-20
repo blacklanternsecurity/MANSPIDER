@@ -84,6 +84,9 @@ class MANSPIDER:
         self.max_failed_logons  = options.max_failed_logons
         self.max_filesize       = options.max_filesize
 
+        self.share_whitelist    = options.sharenames
+        self.share_blacklist    = options.exclude_sharenames
+
         self.no_download        = options.no_download
 
         self.init_file_extensions(options.extensions)

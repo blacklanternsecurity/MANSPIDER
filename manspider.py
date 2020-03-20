@@ -23,9 +23,11 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--maxdepth',     type=int,   default=10,     help='maximum depth to spider (default: 10)')
     parser.add_argument('-H', '--hash',         default='',                 help='NTLM hash for authentication')
     parser.add_argument('-t', '--threads',      type=int,   default=25,     help='concurrent threads (default: 100)')
-    parser.add_argument('-f', '--filenames', nargs='*', default=[],         help='filter filenames using regex (space separated)')
-    parser.add_argument('-e', '--extensions',nargs='*', default=[],         help='only show filenames with these extensions (space separated)')
-    parser.add_argument('-c', '--content',   nargs='*', default=[],         help='search for file content using regex (space separated)')
+    parser.add_argument('-f', '--filenames', nargs='+', default=[],         help='filter filenames using regex (space-separated)')
+    parser.add_argument('-e', '--extensions',nargs='+', default=[],         help='only show filenames with these extensions (space-separated)')
+    parser.add_argument('-c', '--content',   nargs='+', default=[],         help='search for file content using regex (space-separated)')
+    parser.add_argument('--sharenames',      nargs='+', default=[],         help='only search shares with these names (space-separated)')
+    parser.add_argument('--exclude-sharenames', nargs='+', default=[],      help='don\'t search shares with these names (space-separated)')
     parser.add_argument('-q', '--quiet',   action='store_true',             help='don\'t display matching file content')
     parser.add_argument('-n', '--no-download',   action='store_true',       help='don\'t download matching files into /loot')
     parser.add_argument('-mfail', '--max-failed-logons', type=int,          help='limit failed logons')
@@ -52,6 +54,10 @@ if __name__ == '__main__':
             if not extension.startswith('.'):
                 extension = f'.{extension}'
             options.extensions[i] = extension.lower()
+
+        # lowercase share names
+        options.sharenames = [s.lower() for s in options.sharenames]
+        options.exclude_sharenames = [s.lower() for s in options.exclude_sharenames]
 
         assert options.maxdepth > 0, 'maxdepth must be greater than zero'
 

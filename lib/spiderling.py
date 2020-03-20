@@ -8,7 +8,7 @@ from shutil import move
 import subprocess as sp
 from pathlib import Path
 from zipfile import BadZipFile # an unhandled textract error
-from traceback import print_exc
+from traceback import format_exc
 from .logger import ColoredFormatter
 
 
@@ -67,7 +67,7 @@ class Spiderling:
         # send all exceptions to the parent
         except Exception as e:
             if log.level <= logging.DEBUG:
-                log.error(print_exc())
+                log.error(format_exc())
             else:
                 log.error(f'Error in spiderling: {e}')
 
@@ -97,7 +97,16 @@ class Spiderling:
         Lists all shares on single target
         '''
 
-        return self.smb_client.shares
+        for share in self.smb_client.shares:
+            # if the share has been whitelisted
+            if ((not self.parent.share_whitelist) or (share.lower() in self.parent.share_whitelist)):
+                # and hasn't been blacklisted
+                if ((not self.parent.share_blacklist) or (share.lower() not in self.parent.share_blacklist)):
+                    yield share
+                else:
+                    log.debug(f'{self.target}: Skipping blacklisted share "{share}"')
+            else:
+                log.debug(f'{self.target}: Skipping share "{share}", not in whitelist')
 
 
     def list_files(self, share, path='', depth=0, tries=2):
