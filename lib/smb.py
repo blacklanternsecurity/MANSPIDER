@@ -65,6 +65,8 @@ class SMBClient:
 
             try:
 
+                log.debug(f'{self.server}: Authenticating as "{self.username}"')
+
                 # pass the hash if requested
                 if self.nthash and not self.password:
                     self.conn.login(
@@ -81,21 +83,32 @@ class SMBClient:
                         self.password,
                         domain=self.domain,
                     )
+
+                log.info(f'{self.server}: Successful login as "{self.username}"')
+                return True
+
             except Exception as e:
                 e = handle_impacket_error(e, self, display=True)
-                # switch to null session if logon failed and we're not already using null session
-                if self.username:
+                # try guest account, then null session if logon failed
+                if self.username not in ['Guest', '']:
                     if 'LOGON_FAIL' in str(e) or 'PASSWORD_EXPIRED' in str(e):
                         if 'LOGON_FAIL' in str(e):
-                            log.warning(f'{self.server}: STATUS_LOGON_FAILURE')
-                        log.debug(f'Switching to null session due to error: {e}')
-                        self.username = ''
+                            log.warning(f'{self.server}: STATUS_LOGON_FAILURE as "{self.username}"')
+                        log.debug(f'{self.server}: Switching to guest session')
+                        self.username = 'Guest'
                         self.password = ''
                         self.domain = ''
                         self.nthash = ''
-                        self.login(refresh=True)
+                        guest_success = self.login(refresh=True)
+                        if not guest_success:
+                            log.debug(f'{self.server}: Switching to null session')
+                            self.username = ''
+                            self.login(refresh=True)
                         return str(e)
 
+            return False
+
+        else:
             return True
 
 

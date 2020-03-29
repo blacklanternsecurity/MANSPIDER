@@ -39,7 +39,8 @@ Scan for juicy info sitting on SMB shares. Matching files go into /loot.
 
 positional arguments:
   targets               IPs, Hostnames, or CIDR ranges to spider (files also
-                        supported)
+                        supported, NOTE: specify "loot" to only search local
+                        files in ./loot)
 
 optional arguments:
   -h, --help            show this help message and exit

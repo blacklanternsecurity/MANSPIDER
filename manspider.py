@@ -4,6 +4,7 @@ import sys
 import logging
 import argparse
 from lib import *
+import multiprocessing
 
 
 # set up logging
@@ -11,19 +12,25 @@ log = logging.getLogger('manspider')
 log.setLevel('INFO')
 
 
+def main(options):
+
+    manspider = MANSPIDER(options)
+    manspider.start()
+
+
 if __name__ == '__main__':
 
     interrupted = False
 
     parser = argparse.ArgumentParser(description='Scan for juicy info sitting on SMB shares. Matching files go into /loot.')
-    parser.add_argument('targets', nargs='+',   type=str_to_hosts,          help='IPs, Hostnames, or CIDR ranges to spider (files also supported)')
+    parser.add_argument('targets', nargs='+',   type=str_to_hosts,          help='IPs, Hostnames, or CIDR ranges to spider (files also supported, NOTE: specify "loot" to only search local files in ./loot)')
     parser.add_argument('-u', '--username',     default='',                 help='username for authentication')
     parser.add_argument('-p', '--password',     default='',                 help='password for authentication')
     parser.add_argument('-d', '--domain',       default='',                 help='domain for authentication (e.g. evilcorp.local)')
     parser.add_argument('-m', '--maxdepth',     type=int,   default=10,     help='maximum depth to spider (default: 10)')
     parser.add_argument('-H', '--hash',         default='',                 help='NTLM hash for authentication')
     parser.add_argument('-t', '--threads',      type=int,   default=25,     help='concurrent threads (default: 100)')
-    parser.add_argument('-f', '--filenames', nargs='+', default=[],         help='filter filenames using regex (space-separated)')
+    parser.add_argument('-f', '--filenames', nargs='+', default=[],         help=f'filter filenames using regex (space-separated)')
     parser.add_argument('-e', '--extensions',nargs='+', default=[],         help='only show filenames with these extensions (space-separated)')
     parser.add_argument('-c', '--content',   nargs='+', default=[],         help='search for file content using regex (space-separated)')
     parser.add_argument('--sharenames',      nargs='+', default=[],         help='only search shares with these names (space-separated)')
@@ -47,8 +54,6 @@ if __name__ == '__main__':
         if options.verbose:
             log.setLevel('DEBUG')
 
-        log.info(f'Using {options.threads:,} threads')
-
         # make sure extension formats are valid
         for i, extension in enumerate(options.extensions):
             if not extension.startswith('.'):
@@ -61,12 +66,16 @@ if __name__ == '__main__':
 
         assert options.maxdepth > 0, 'maxdepth must be greater than zero'
 
+        # deduplicate targets
         targets = set()
         [[targets.add(t) for t in g] for g in options.targets]
-        options.targets = targets
+        options.targets = list(targets)
 
-        manspider = MANSPIDER(options)
-        manspider.start()
+        log.info(f'Using {options.threads:,} threads')
+
+        p = multiprocessing.Process(target=main, args=(options,))
+        p.start()
+        listener.start()
 
     except argparse.ArgumentError as e:
         log.error(e)
@@ -85,5 +94,8 @@ if __name__ == '__main__':
             log.critical(f'Critical error (-v to debug): {e}')
 
     finally:
-        # stop the log listener
-        listener.stop()
+        try:
+            p.join()
+            listener.stop()
+        except:
+            pass

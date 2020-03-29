@@ -88,6 +88,7 @@ class MANSPIDER:
         self.share_blacklist    = options.exclude_sharenames
 
         self.no_download        = options.no_download
+        self.search_loot        = (True if options.targets == ['loot'] else False)
 
         self.init_file_extensions(options.extensions)
         self.init_filename_filters(options.filenames)
@@ -122,7 +123,8 @@ class MANSPIDER:
                 if not self.lockout_threshold():
                     # target, username, password, domain, hash, filename_filters, parent_queue
                     spiderling = threading.Thread(
-                        target=Spiderling, args=(target, self), daemon=True
+                        target=Spiderling,
+                        args=(target, self)
                     )
                     spiderling.start()
 

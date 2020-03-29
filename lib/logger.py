@@ -78,7 +78,6 @@ console.setFormatter(ColoredFormatter('%(levelname)s %(message)s'))
 
 log_queue = Queue()
 listener = QueueListener(log_queue, console)
-listener.start()
 sender = QueueHandler(log_queue)
 logging.getLogger('manspider').handlers = [sender]
 

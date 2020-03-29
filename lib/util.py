@@ -1,6 +1,8 @@
+import os
 import string
 import random
 import ipaddress
+from pathlib import Path
 
 
 def str_to_list(s):
@@ -94,3 +96,18 @@ def better_decode(b):
 def random_string(length):
 
     return ''.join(random.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for i in range(length))
+
+
+def list_files(path):
+
+    path = Path(path)
+
+    if path.is_file() and not path.is_symlink():
+        yield path
+
+    elif path.is_dir():
+        for dir_name, dirnames, filenames in os.walk(path):
+            for file in filenames:
+                file = Path(dir_name) / file
+                if file.is_file() and not file.is_symlink():
+                    yield file

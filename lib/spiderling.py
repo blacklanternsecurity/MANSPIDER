@@ -45,31 +45,37 @@ class Spiderling:
             import signal
             signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        try:
-
             self.parent = parent
             self.target = target
-            self.smb_client = SMBClient(
-                target,
-                parent.username,
-                parent.password,
-                parent.domain,
-                parent.nthash,
-            )
 
-            logon_result = self.smb_client.login()
-            if logon_result not in [True, None]:
-                self.message_parent('a', logon_result)
+        # unless we're only searching local files, connect to target
+        if self.target == 'loot':
+            self.go()
 
-            if logon_result is not None:
-                self.go()
+        else:
+            try:
+                
+                self.smb_client = SMBClient(
+                    target,
+                    parent.username,
+                    parent.password,
+                    parent.domain,
+                    parent.nthash,
+                )
 
-        # send all exceptions to the parent
-        except Exception as e:
-            if log.level <= logging.DEBUG:
-                log.error(format_exc())
-            else:
-                log.error(f'Error in spiderling: {e}')
+                logon_result = self.smb_client.login()
+                if logon_result not in [True, None]:
+                    self.message_parent('a', logon_result)
+
+                if logon_result is not None:
+                    self.go()
+
+            # send all exceptions to the parent
+            except Exception as e:
+                if log.level <= logging.DEBUG:
+                    log.error(format_exc())
+                else:
+                    log.error(f'Error in spiderling: {e}')
 
 
     def go(self):
@@ -77,18 +83,22 @@ class Spiderling:
         go spider go spider go
         '''
 
-        for share in self.shares:
-            for file in self.list_files(share):
-                # if file content search is enabled
+        if self.target == 'loot':
+            self.parse_local_files()
 
-                try:
-                    log.info(f'{file} ({bytes_to_human(file.size)})')
-                except FileRetrievalError as e:
-                    log.debug(e)
-                if self.parent.file_content_filters:
-                    self.parse_file(file)
-                else:
-                    self.message_parent('f', content=file)
+        else:
+            for share in self.shares:
+                for file in self.list_files(share):
+                    # if file content search is enabled
+
+                    try:
+                        log.info(f'{file} ({bytes_to_human(file.size)})')
+                    except FileRetrievalError as e:
+                        log.debug(e)
+                    if self.parent.file_content_filters:
+                        self.parse_file(file)
+                    else:
+                        self.message_parent('f', content=file)
 
 
     @property
@@ -252,6 +262,9 @@ class Spiderling:
 
 
     def parse_file(self, remote_file):
+        '''
+        Parse a file on a remote share
+        '''
     
         suffix = Path(str(remote_file)).suffix.lower()
 
@@ -261,34 +274,61 @@ class Spiderling:
 
             try:
                 remote_file.get(smb_client)
-            except FileRetrievalError as e:
-                log.debug(f'{self.target}: {e}')
-
-            try:
-                binary_content = textract.process(str(remote_file.tmp_filename), encoding='utf-8')
-                text_content = better_decode(binary_content)
-
-                matches = dict()
-                for _filter, match in self.file_content_match(text_content):
-                    try:
-                        matches[_filter] += 1
-                    except KeyError:
-                        matches[_filter] = 1
-
-                for _filter, match_count in matches.items():
-                    log.info(f'{remote_file}: matched "{_filter.pattern}" {match_count:,} times')
-                    if not self.parent.quiet:
-                        log.info('=' * 80)
-                        self.grep(binary_content, _filter.pattern)
-                        log.info('=' * 80)
+                matches = self.parse_local_file(str(remote_file.tmp_filename), str(remote_file))
 
                 if matches and not self.parent.no_download:
                     self.save_file(remote_file)
                 else:
                     remote_file.tmp_filename.unlink()
 
-            except (UnicodeDecodeError, BadZipFile, textract.exceptions.CommandLineError) as e:
-                log.debug(f'{self.target}: Error extracting text from {remote_file}: {e}')
+            except FileRetrievalError as e:
+                log.debug(f'{self.target}: {e}')
+
+
+    def parse_local_file(self, local_file, pretty_filename=None):
+        '''
+        Parse a file on the local filesystem
+        '''
+
+        matches = dict()
+
+        if pretty_filename is None:
+            pretty_filename = str(local_file)
+
+        try:
+
+            binary_content = textract.process(str(local_file), encoding='utf-8')
+            text_content = better_decode(binary_content)
+
+            for _filter, match in self.file_content_match(text_content):
+                try:
+                    matches[_filter] += 1
+                except KeyError:
+                    matches[_filter] = 1
+
+            for _filter, match_count in matches.items():
+                log.info(f'{pretty_filename}: matched "{_filter.pattern}" {match_count:,} times')
+                if not self.parent.quiet:
+                    #log.info('=' * 80)
+                    self.grep(binary_content, _filter.pattern)
+                    #log.info('=' * 80)
+
+        except (UnicodeDecodeError, BadZipFile, textract.exceptions.CommandLineError) as e:
+            log.debug(f'{self.target}: Error extracting text from {pretty_filename}: {e}')
+
+        return matches
+
+
+    def parse_local_files(self):
+
+        for file in list(list_files(self.parent.loot_dir)):
+            if self.extension_match(file) and self.filename_match(file):
+                shortened_file = f'./loot/{file.relative_to(self.parent.loot_dir)}'
+                log.info(f'Found file: {shortened_file}')
+                self.parse_local_file(file, shortened_file)
+            else:
+                log.debug(f'File {file} does not match filters, skipping')
+
 
 
     def save_file(self, remote_file):
