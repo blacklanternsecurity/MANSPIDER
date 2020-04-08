@@ -1,15 +1,13 @@
 import logging
-import textract
 from .smb import *
 from .file import *
 from .util import *
 from .errors import *
+import multiprocessing
 from shutil import move
-import subprocess as sp
 from pathlib import Path
-from zipfile import BadZipFile # an unhandled textract error
+from .processpool import *
 from traceback import format_exc
-from .logger import ColoredFormatter
 
 
 log = logging.getLogger('manspider.spiderling')
@@ -38,23 +36,35 @@ class Spiderling:
     Designed to be threadable
     '''
 
+    # these extensions don't get parsed for content
+    dont_parse = [
+        '.png',
+        '.gif',
+        '.tiff',
+        '.msi',
+        '.bmp',
+        '.jpg',
+        '.jpeg',
+        '.zip',
+        '.gz',
+        '.bz2',
+        '.7z',
+        '.xz',
+    ]
+
     def __init__(self, target, parent):
 
-        # ignore keyboardinterrupt
-        if parent.threads > 1:
-            import signal
-            signal.signal(signal.SIGINT, signal.SIG_IGN)
+        try:
 
             self.parent = parent
             self.target = target
 
-        # unless we're only searching local files, connect to target
-        if self.target == 'loot':
-            self.go()
+            # unless we're only searching local files, connect to target
+            if self.target == 'loot':
+                self.go()
 
-        else:
-            try:
-                
+            else:
+
                 self.smb_client = SMBClient(
                     target,
                     parent.username,
@@ -70,12 +80,19 @@ class Spiderling:
                 if logon_result is not None:
                     self.go()
 
-            # send all exceptions to the parent
-            except Exception as e:
-                if log.level <= logging.DEBUG:
-                    log.error(format_exc())
-                else:
-                    log.error(f'Error in spiderling: {e}')
+            # file parsing parallelized one process at a time
+            # allows file to be parsed while next one is being fetched
+            self.parser_process = None
+
+        except KeyboardInterrupt:
+            log.critical('Spiderling Interrupted')
+
+        # log all exceptions
+        except Exception as e:
+            if log.level <= logging.DEBUG:
+                log.error(format_exc())
+            else:
+                log.error(f'Error in spiderling: {e}')
 
 
     def go(self):
@@ -83,22 +100,90 @@ class Spiderling:
         go spider go spider go
         '''
 
+        # local files
         if self.target == 'loot':
-            self.parse_local_files()
+            if self.parent.parser.content_filters:
+                self.parse_local_files(self.files)
+            else:
+                # just list the files
+                list(self.files)
+
+        else:
+            # remote files
+            for file in self.files:
+
+                # if content searching is enabled, parse the file
+                if self.parent.parser.content_filters:
+                    try:
+                        self.parser_process.join()
+                    except AttributeError:
+                        pass
+                    self.parser_process = multiprocessing.Process(target=self.parse_file, args=(file,))
+                    self.parser_process.start()
+
+                # otherwise, just save it
+                elif self.target != 'loot':
+                    if not self.parent.no_download:
+                        self.save_file(file)
+                    log.info(f'{self.target}: {file} ({bytes_to_human(file.size)})')
+
+
+
+    @property
+    def files(self):
+        '''
+        Yields all files on the target to be parsed/downloaded
+        Premptively download matching files into temp directory
+        '''
+
+        if self.target == 'loot':
+            for file in list(list_files(self.parent.loot_dir)):
+                if self.path_match(file) or (self.parent.or_logic and self.parent.parser.content_filters):
+                    if self.path_match(file):
+                        log.info(Path(file).relative_to(self.parent.loot_dir))
+                    if not self.is_bad_extension(file):
+                        yield file
+                else:
+                    log.debug(f'Skipping {file}: does not match filename/extension filters')
 
         else:
             for share in self.shares:
-                for file in self.list_files(share):
-                    # if file content search is enabled
+                for remote_file in self.list_files(share):
+                    if not self.parent.no_download:
+                        self.get_file(remote_file)
+                    yield remote_file
 
-                    try:
-                        log.info(f'{file} ({bytes_to_human(file.size)})')
-                    except FileRetrievalError as e:
-                        log.debug(e)
-                    if self.parent.file_content_filters:
-                        self.parse_file(file)
-                    else:
-                        self.message_parent('f', content=file)
+
+
+    def parse_file(self, file):
+        '''
+        Simple wrapper around self.parent.parser.parse_file()
+        For sole purpose of threading
+        '''
+
+        try:
+
+            if type(file) == RemoteFile:
+                matches = self.parent.parser.parse_file(str(file.tmp_filename), pretty_filename=str(file))
+                if matches and not self.parent.no_download:
+                    self.save_file(file)
+                else:
+                    file.tmp_filename.unlink()
+
+            else:
+                shortened_file = f'./loot/{file.relative_to(self.parent.loot_dir)}'
+                log.debug(f'Found file: {shortened_file}')
+                self.parent.parser.parse_file(file, shortened_file)
+
+        # log all exceptions
+        except Exception as e:
+            if log.level <= logging.DEBUG:
+                log.error(format_exc())
+            else:
+                log.error(f'Error parsing file {file}: {e}')
+
+        except KeyboardInterrupt:
+            log.critical('File parsing interrupted')
 
 
     @property
@@ -108,24 +193,18 @@ class Spiderling:
         '''
 
         for share in self.smb_client.shares:
-            # if the share has been whitelisted
-            if ((not self.parent.share_whitelist) or (share.lower() in self.parent.share_whitelist)):
-                # and hasn't been blacklisted
-                if ((not self.parent.share_blacklist) or (share.lower() not in self.parent.share_blacklist)):
-                    yield share
-                else:
-                    log.debug(f'{self.target}: Skipping blacklisted share "{share}"')
-            else:
-                log.debug(f'{self.target}: Skipping share "{share}", not in whitelist')
+            if self.share_match(share):
+                yield share
+
 
 
     def list_files(self, share, path='', depth=0, tries=2):
         '''
-        Lists files inside a specific directory
-        @byt3bl33d3r it's really not *that* funky
+        List files inside a specific directory
+        Only yield files which conform to all filters (except content)
         '''
 
-        if depth < self.parent.maxdepth:
+        if depth < self.parent.maxdepth and self.dir_match(path):
 
             files = []
             while tries > 0:
@@ -150,34 +229,108 @@ class Spiderling:
                     for file in self.list_files(share, full_path, (depth+1)):
                         yield file
 
-                # otherwise, if filename matches filters
-                elif self.filename_match(name):
+                else:
 
-                    # and if it matches extension filters
-                    if self.extension_match(name):
-
-                        try:
-                            filesize = f.get_filesize()
-                        except Exception as e:
-                            handle_impacket_error(e)
+                    # skip the file if it didn't match filename/extension filters
+                    if not self.path_match(name):
+                        if not (
+                                # all of these have to be true in order to get past this point
+                                # "or logic" is enabled
+                                self.parent.or_logic and
+                                # and file does not have a "don't parse" extension
+                                (not self.is_bad_extension(name)) and
+                                # and content filters are enabled
+                                self.parent.parser.content_filters
+                            ):
+                            log.debug(f'{self.target}: Skipping {share}{full_path}: filename/extensions do not match')
                             continue
 
-                        # and if it's a non-empty file that's smaller than the size limit'
-                        if filesize > 0 and filesize < self.parent.max_filesize:
-                            full_path_fixed = full_path.lstrip('\\')
-                            remote_file = RemoteFile(full_path_fixed, share, self.target, size=filesize)
+                    # try to get the size of the file
+                    try:
+                        filesize = f.get_filesize()
+                    except Exception as e:
+                        handle_impacket_error(e)
+                        continue
 
-                            # download the file if content searching is disabled
-                            if not self.parent.file_content_filters and not self.parent.no_download:
-                                smb_client = self.parent.get_smb_client(self.target)
-                                try:
-                                    remote_file.get(smb_client)
+                    # make the RemoteFile object (the file won't be read yet)
+                    full_path_fixed = full_path.lstrip('\\')
+                    remote_file = RemoteFile(full_path_fixed, share, self.target, size=filesize)
+
+                    # if it's a non-empty file that's smaller than the size limit
+                    if filesize > 0 and filesize < self.parent.max_filesize:
+                        
+                        # if it matched filename/extension filters and we're downloading files
+                        if (self.parent.file_extensions or self.parent.filename_filters) and not self.parent.no_download:
+                            # but the extension is marked as "don't parse"
+                            if self.is_bad_extension(name):
+                                # don't parse it, instead save it and continue
+                                log.info(f'{self.target}: {remote_file.share}\\{remote_file.name}')
+                                if self.get_file(remote_file):
                                     self.save_file(remote_file)
-                                except FileRetrievalError as e:
-                                    log.debug(f'{self.target}: {e}')
+                                    continue
 
-                            yield remote_file
+                        # file is ready to be parsed
+                        yield remote_file
 
+                    else:
+                        log.debug(f'{self.target}: {full_path} is either empty or too large')
+
+
+    def path_match(self, file):
+        '''
+        Based on whether "or" logic is enabled, return True or False
+        if the filename + extension meets the requirements
+        '''
+        filename_match = self.filename_match(file)
+        extension_match = self.extension_match(file)
+        if self.parent.or_logic:
+            return (filename_match and self.parent.filename_filters) or (extension_match and self.parent.file_extensions)
+        else:
+            return filename_match and extension_match
+
+
+
+    def share_match(self, share):
+        '''
+        Return true if "share" matches any of the share filters
+        '''
+
+        # if the share has been whitelisted
+        if ((not self.parent.share_whitelist) or (share.lower() in self.parent.share_whitelist)):
+            # and hasn't been blacklisted
+            if ((not self.parent.share_blacklist) or (share.lower() not in self.parent.share_blacklist)):
+                return True
+            else:
+                log.debug(f'{self.target}: Skipping blacklisted share: {share}')
+        else:
+            log.debug(f'{self.target}: Skipping share {share}: not in whitelist')
+
+        return False
+
+
+    def dir_match(self, path):
+        '''
+        Return true if "path" matches any of the directory filters
+        '''
+
+        # convert forward slashes to backwards
+        dirname = str(path).lower().replace('/', '\\')
+
+        # root path always passes
+        if not path:
+            return True
+
+        # if whitelist check passes
+        if (not self.parent.dir_whitelist) or any([k.lower() in dirname for k in self.parent.dir_whitelist]):
+            # and blacklist check passes
+            if (not self.parent.dir_blacklist) or not any([k.lower() in dirname for k in self.parent.dir_blacklist]):
+                return True
+            else:
+                log.debug(f'{self.target}: Skipping blacklisted dir: {path}')
+        else:
+            log.debug(f'{self.target}: Skipping dir {path}: not in whitelist')
+
+        return False
 
 
     def filename_match(self, filename):
@@ -185,10 +338,11 @@ class Spiderling:
         Return true if "filename" matches any of the filename filters
         '''
 
-        if not self.parent.filename_filters:
+        if (not self.parent.filename_filters) or any([f_regex.match(str(Path(filename).stem)) for f_regex in self.parent.filename_filters]):
             return True
-        if any([f_regex.match(filename) for f_regex in self.parent.filename_filters]):
-            return True
+        else:
+            log.debug(f'{self.target}: {filename} does not match filename filters')
+
         return False
 
 
@@ -202,25 +356,27 @@ class Spiderling:
         if not file_extension_filters:
             return True
 
-        # .tar.gz will match both ".gz" and ".tar.gz"
+        # a .tar.gz file will match both filters ".gz" and ".tar.gz"
         extension = ''.join(Path(filename).suffixes).lower()
 
         if any([extension.endswith(e) for e in file_extension_filters]):
             return True
+        else:
+            log.debug(f'{self.target}: {filename} does not match extension filters')
 
         return False
 
 
-
-    def file_content_match(self, file_content):
+    def is_bad_extension(self, filename):
         '''
-        Finds all regex matches in file content
+        Returns True if file is a bad extension type, e.g. encrypted or compressed
         '''
 
-        for _filter in self.parent.file_content_filters:
-            for match in _filter.finditer(file_content):
-                # ( filter, (match_start_index, match_end_index) )
-                yield (_filter, match.span())
+        extension = ''.join(Path(filename).suffixes).lower()
+        if any([extension.endswith(e.lower()) for e in self.dont_parse]):
+            log.debug(f'{self.target}: Not parsing {filename} due to undesirable extension')
+            return True
+        return False
 
 
     def message_parent(self, message_type, content=''):
@@ -233,102 +389,12 @@ class Spiderling:
         )
 
 
-    def grep(self, content, pattern):
 
-        if not self.parent.quiet:
-            try:
-                '''
-                GREP(1)
-                    -m NUM, --max-count=NUM
-                        Stop  reading  a file after NUM matching lines
-                    -i, --ignore-case
-                        Ignore case distinctions
-                    -a, --text
-                        Process a binary file as if it were text
-                '''
-                grep_process = sp.Popen(
-                    ['egrep', '-iam', '5', '--color=always', pattern],
-                    stdin=sp.PIPE,
-                    stdout=sp.PIPE
-                )
-                grep_output = grep_process.communicate(content)[0]
-                for line in grep_output.splitlines():
-                    try:
-                        log.info(line.decode()[:150])
-                    except UnicodeDecodeError:
-                        log.info(str(line)[:150])
-            except (sp.SubprocessError, OSError, IndexError):
+    def parse_local_files(self, files):
+
+        with ProcessPool(self.parent.threads) as pool:
+            for r in pool.map(self.parse_file, files):
                 pass
-
-
-    def parse_file(self, remote_file):
-        '''
-        Parse a file on a remote share
-        '''
-    
-        suffix = Path(str(remote_file)).suffix.lower()
-
-        if suffix in self.parent.file_extensions.textract:
-
-            smb_client = self.parent.get_smb_client(self.target)
-
-            try:
-                remote_file.get(smb_client)
-                matches = self.parse_local_file(str(remote_file.tmp_filename), str(remote_file))
-
-                if matches and not self.parent.no_download:
-                    self.save_file(remote_file)
-                else:
-                    remote_file.tmp_filename.unlink()
-
-            except FileRetrievalError as e:
-                log.debug(f'{self.target}: {e}')
-
-
-    def parse_local_file(self, local_file, pretty_filename=None):
-        '''
-        Parse a file on the local filesystem
-        '''
-
-        matches = dict()
-
-        if pretty_filename is None:
-            pretty_filename = str(local_file)
-
-        try:
-
-            binary_content = textract.process(str(local_file), encoding='utf-8')
-            text_content = better_decode(binary_content)
-
-            for _filter, match in self.file_content_match(text_content):
-                try:
-                    matches[_filter] += 1
-                except KeyError:
-                    matches[_filter] = 1
-
-            for _filter, match_count in matches.items():
-                log.info(f'{pretty_filename}: matched "{_filter.pattern}" {match_count:,} times')
-                if not self.parent.quiet:
-                    #log.info('=' * 80)
-                    self.grep(binary_content, _filter.pattern)
-                    #log.info('=' * 80)
-
-        except (UnicodeDecodeError, BadZipFile, textract.exceptions.CommandLineError) as e:
-            log.debug(f'{self.target}: Error extracting text from {pretty_filename}: {e}')
-
-        return matches
-
-
-    def parse_local_files(self):
-
-        for file in list(list_files(self.parent.loot_dir)):
-            if self.extension_match(file) and self.filename_match(file):
-                shortened_file = f'./loot/{file.relative_to(self.parent.loot_dir)}'
-                log.info(f'Found file: {shortened_file}')
-                self.parse_local_file(file, shortened_file)
-            else:
-                log.debug(f'File {file} does not match filters, skipping')
-
 
 
     def save_file(self, remote_file):
@@ -340,3 +406,19 @@ class Spiderling:
         loot_filename = str(remote_file).replace('\\', '_')
         loot_dest = self.parent.loot_dir / loot_filename
         move(str(remote_file.tmp_filename), str(loot_dest))
+
+
+    def get_file(self, remote_file):
+        '''
+        Attempts to retrieve "remote_file" from share and returns True if successful
+        '''
+
+        try:
+            smb_client = self.parent.get_smb_client(self.target)
+            log.debug(f'{self.target}: Downloading {remote_file.share}\\{remote_file.name}')
+            remote_file.get(smb_client)
+            return True
+        except FileRetrievalError as e:
+            log.debug(f'{self.target}: {e}')
+
+        return False

@@ -13,13 +13,13 @@ $ pipenv --python 3 shell
 ## Example #1: Search the network for filenames containing juicy strings
 NOTE: matching files are automatically downloaded into `./loot`!
 ~~~
-./manspider.py -v -f passw user admin network login logon -d evilcorp -u bob -p Spring2020 192.168.0.0/24
+./manspider.py 192.168.0.0/24 -v -f passw user admin network login logon -d evilcorp -u bob -p Spring2020
 ~~~
 
 ## Example #2: Search for XLSX files containing "password" in the content
 NOTE: matching files are automatically downloaded into `./loot`!
 ~~~
-./manspider.py -v -c password -e xlsx -d evilcorp -u bob -p Spring2020 share.evilcorp.local
+./manspider.py share.evilcorp.local -v -c password -e xlsx -d evilcorp -u bob -p Spring2020
 ~~~
 
 ## Usage:

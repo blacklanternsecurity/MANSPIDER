@@ -68,6 +68,17 @@ class ColoredFormatter(logging.Formatter):
 
 
 
+class CustomQueueListener(QueueListener):
+    '''
+    Ignore errors in the monitor thread that result from a race condition when the program exits
+    '''
+    def _monitor(self):
+        try:
+            super()._monitor()
+        except:
+            pass
+
+
 ### LOG TO STDERR ###
 
 console = logging.StreamHandler(stdout)
@@ -77,7 +88,7 @@ console.setFormatter(ColoredFormatter('%(levelname)s %(message)s'))
 ### LOG TO FILE ###
 
 log_queue = Queue()
-listener = QueueListener(log_queue, console)
+listener = CustomQueueListener(log_queue, console)
 sender = QueueHandler(log_queue)
 logging.getLogger('manspider').handlers = [sender]
 

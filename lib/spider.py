@@ -6,66 +6,10 @@ from time import sleep
 import multiprocessing
 from pathlib import Path
 from .spiderling import *
+from .parser import FileParser
 
 # set up logging
 log = logging.getLogger('manspider')
-
-
-class FileExtensions:
-    '''
-    defines which file extensions get searched by default
-    can be overridden with the "file_extensions" argument
-    NOTE: unknown filetypes will be parsed with the "plain" method
-    '''
-
-    # parsed using the textract library
-    textract = [
-        '.doc',
-        '.docx',
-        '.xls',
-        '.xlsx',
-        '.ppt',
-        '.pptx',
-        '.pdf',
-        '.eml',
-    ]
-
-    # parsed using simple file/string operations
-    plain = [
-        '.ps1'
-        '.vbs',
-        '.com',
-        '.bat',
-        '.txt',
-        '.json',
-        '.xml',
-        '.ini',
-        '.conf',
-        '.config'
-    ]
-
-    def update(self, file_extensions):
-        '''
-        Replace default extension lists with user-requested ones
-        '''
-
-        new_textract = set()
-        new_plain = set()
-
-        for extension in file_extensions:
-            if extension in self.textract:
-                new_textract.add(extension)
-            else:
-                new_plain.add(extension)
-
-        self.textract = list(new_textract)
-        self.plain = list(new_plain)
-
-
-    def __iter__(self):
-
-        for e in self.textract + self.plain:
-            yield e
 
 
 class MANSPIDER:
@@ -87,12 +31,23 @@ class MANSPIDER:
         self.share_whitelist    = options.sharenames
         self.share_blacklist    = options.exclude_sharenames
 
+        self.dir_whitelist      = options.dirnames
+        self.dir_blacklist      = options.exclude_dirnames
+
         self.no_download        = options.no_download
         self.search_loot        = (True if options.targets == ['loot'] else False)
 
-        self.init_file_extensions(options.extensions)
+        # applies "or" logic instead of "and"
+        # e.g. file is downloaded if filename OR extension OR content match
+        self.or_logic           = options.or_logic
+
+        self.file_extensions    = options.extensions
+        if self.file_extensions:
+            extensions_str = '"' + '", "'.join(list(self.file_extensions)) + '"'
+            log.info(f'Searching by file extension: {extensions_str}')
+
         self.init_filename_filters(options.filenames)
-        self.init_file_content_filters(options.content)
+        self.parser = FileParser(options.content, quiet=self.quiet)
 
         self.failed_logons = 0
 
@@ -100,7 +55,7 @@ class MANSPIDER:
             self.spiderling_queue = queue.Queue()
         else:
             self.spiderling_pool = [None] * self.threads
-            self.spiderling_queue = multiprocessing.Queue()
+            self.spiderling_queue = multiprocessing.Manager().Queue()
 
         # prevents needing to continually instantiate new SMBClients
         # {target: SMBClient() ...}
@@ -143,7 +98,7 @@ class MANSPIDER:
                             if process is None or not process.is_alive():
                                 # start spiderling
                                 self.spiderling_pool[i] = multiprocessing.Process(
-                                    target=Spiderling, args=(target, self), daemon=True
+                                    target=Spiderling, args=(target, self), daemon=False
                                 )
                                 self.spiderling_pool[i].start()
                                 # break out of infinite loop
@@ -168,6 +123,7 @@ class MANSPIDER:
         self.check_spiderling_queue()
 
 
+
     def init_file_extensions(self, file_extensions):
         '''
         Get ready to search by file extension
@@ -176,8 +132,7 @@ class MANSPIDER:
         self.file_extensions = FileExtensions()
         if file_extensions:
             self.file_extensions.update(file_extensions)
-            extensions_str = '"' + '", "'.join(list(self.file_extensions)) + '"'
-            log.info(f'Searching by file extension: {extensions_str}')
+            
 
 
     def init_filename_filters(self, filename_filters):
@@ -191,9 +146,9 @@ class MANSPIDER:
         for f in filename_filters:
             regex_str = str(f)
             try:
-                if not f.startswith('^'):
+                if not any([f.startswith(x) for x in ['^', '.*']]):
                     regex_str = rf'.*{regex_str}'
-                if not f.endswith('$'):
+                if not any([f.endswith(x) for x in ['$', '.*']]):
                     regex_str = rf'{regex_str}.*'
                 self.filename_filters.append(re.compile(regex_str, re.I))
             except re.error as e:
@@ -202,25 +157,6 @@ class MANSPIDER:
         if self.filename_filters:
             filename_filter_str = '"' + '", "'.join([f.pattern for f in self.filename_filters]) + '"'
             log.info(f'Searching by filename: {filename_filter_str}')
-
-
-    def init_file_content_filters(self, file_content):
-        '''
-        Get ready to search by file content
-        '''
-
-        # strings to look for in file content
-        # if empty, content is ignored
-        self.file_content_filters = []
-        for f in file_content:
-            try:
-                self.file_content_filters.append(re.compile(f, re.I))
-            except re.error as e:
-                log.error(f'Unsupported file content regex "{f}": {e}')
-                sleep(1)
-        if self.file_content_filters:
-            content_filter_str = '"' + '", "'.join([f.pattern for f in self.file_content_filters]) + '"'
-            log.info(f'Searching by file content: {content_filter_str}')
 
 
     def check_spiderling_queue(self):

@@ -1,2 +1,4 @@
+bs4
 impacket
 textract
+python-magic

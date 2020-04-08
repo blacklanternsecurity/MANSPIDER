@@ -116,6 +116,7 @@ class SMBClient:
         '''
         List files in share/path
         Raise FileListError if there's a problem
+        @byt3bl33d3r it's really not that bad
         '''
 
         nt_path = ntpath.normpath(f'{path}\\*')

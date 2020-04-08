@@ -1,8 +1,15 @@
 import os
+import magic
 import string
 import random
+import logging
 import ipaddress
 from pathlib import Path
+from bs4 import UnicodeDammit
+
+# ignore UnicodeDammit warning
+logging.getLogger().setLevel(logging.CRITICAL)
+log = logging.getLogger('manspider.util')
 
 
 def str_to_list(s):
@@ -87,9 +94,13 @@ def bytes_to_human(_bytes):
 
 def better_decode(b):
 
+    # detect encoding with libmagic
+    m = magic.Magic(mime_encoding=True)
+    encoding = m.from_buffer(b)
+
     try:
-        return b.decode()
-    except UnicodeDecodeError:
+        return b.decode(encoding)
+    except:
         return str(b)[2:-1]
 
 
@@ -111,3 +122,16 @@ def list_files(path):
                 file = Path(dir_name) / file
                 if file.is_file() and not file.is_symlink():
                     yield file
+
+
+def rmdir(directory):
+    '''
+    Recursively remove directory
+    '''
+    directory = Path(directory)
+    for item in directory.iterdir():
+        if item.is_dir():
+            rmdir(item)
+        else:
+            item.unlink()
+    directory.rmdir()
