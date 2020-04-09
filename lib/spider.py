@@ -51,11 +51,8 @@ class MANSPIDER:
 
         self.failed_logons = 0
 
-        if self.threads == 1:
-            self.spiderling_queue = queue.Queue()
-        else:
-            self.spiderling_pool = [None] * self.threads
-            self.spiderling_queue = multiprocessing.Manager().Queue()
+        self.spiderling_pool = [None] * self.threads
+        self.spiderling_queue = multiprocessing.Manager().Queue()
 
         # prevents needing to continually instantiate new SMBClients
         # {target: SMBClient() ...}
@@ -72,52 +69,34 @@ class MANSPIDER:
 
     def start(self):
 
-        # do it the simple way if we're only using one thread
-        if self.threads == 1:
-            for target in self.targets:
-                if not self.lockout_threshold():
-                    # target, username, password, domain, hash, filename_filters, parent_queue
-                    spiderling = threading.Thread(
-                        target=Spiderling,
-                        args=(target, self)
-                    )
-                    spiderling.start()
+        for target in self.targets:
+            try:
+                while 1:
+                    for i, process in enumerate(self.spiderling_pool):
+                        # if there's room in the pool
+                        if process is None or not process.is_alive():
+                            # start spiderling
+                            self.spiderling_pool[i] = multiprocessing.Process(
+                                target=Spiderling, args=(target, self), daemon=False
+                            )
+                            self.spiderling_pool[i].start()
+                            # success, break out of infinite loop
+                            assert False
+                        else:
+                            # otherwise, clear the queue
+                            self.check_spiderling_queue()
 
-                    while 1:
-                        self.check_spiderling_queue()
-                        if not spiderling.is_alive():
-                            break
+            except AssertionError:
+                continue
 
-        # otherwise, use multiprocessing
-        else:
-            for target in self.targets:
-                while not self.lockout_threshold():
-                    try:
-                        for i, process in enumerate(self.spiderling_pool):
-                            # if there's room in the pool
-                            if process is None or not process.is_alive():
-                                # start spiderling
-                                self.spiderling_pool[i] = multiprocessing.Process(
-                                    target=Spiderling, args=(target, self), daemon=False
-                                )
-                                self.spiderling_pool[i].start()
-                                # break out of infinite loop
-                                assert False
-                            else:
-                                # otherwise, clear the queue
-                                self.check_spiderling_queue()
+            # save on CPU
+            sleep(.1)
 
-                    except AssertionError:
-                        break
-
-                    # save on CPU
-                    sleep(.1)
-
-            while 1:
-                self.check_spiderling_queue()
-                dead_spiderlings = [s is None or not s.is_alive() for s in self.spiderling_pool]
-                if all(dead_spiderlings):
-                    break
+        while 1:
+            self.check_spiderling_queue()
+            dead_spiderlings = [s is None or not s.is_alive() for s in self.spiderling_pool]
+            if all(dead_spiderlings):
+                break
 
         # make sure the queue is empty
         self.check_spiderling_queue()
@@ -179,8 +158,17 @@ class MANSPIDER:
         Log messages, errors, files, etc.
         '''
         if message.type == 'a':
-            log.warning(f'{message.target}: {message.content}')
-            self.failed_logons += 1
+            if message.content == False:
+                self.failed_logons += 1
+            if self.lockout_threshold():
+                log.error(f'REACHED MAXIMUM FAILED LOGONS OF {self.max_failed_logons:,}')
+                log.error('KILLING EXISTING SPIDERLINGS AND CONTINUING WITH GUEST/NULL SESSIONS')
+                #for spiderling in self.spiderling_pool:
+                #    spiderling.kill()
+                self.username = ''
+                self.password = ''
+                self.nthash = ''
+                self.domain = ''
 
 
     def lockout_threshold(self):

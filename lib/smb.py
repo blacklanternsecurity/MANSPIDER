@@ -42,28 +42,30 @@ class SMBClient:
             
         except Exception as e:
             e = handle_impacket_error(e, self)
-            log.debug(f'{self.server}: Error listing shares: {e}')
+            log.warning(f'{self.server}: Error listing shares: {e}')
             
 
 
-    def login(self, refresh=False):
+    def login(self, refresh=False, first_try=True):
         '''
         Create a new SMBConnection object (if there isn't one already or if refresh is True)
         Attempt to log in, and switch to null session if logon fails
         Return True if logon succeeded
+        Return False if logon failed
         '''
 
         if self.conn is None or refresh:
             try:
                 self.conn = SMBConnection(self.server, self.server, sess_port=445, timeout=20)
             except Exception as e:
-                if type(e) == KeyboardInterrupt:
-                    return None
-                else:
-                    log.debug(impacket_error(e))
-                    return None
+                log.debug(impacket_error(e))
+                return None
 
             try:
+
+                if self.username in [None, '', 'Guest'] and first_try:
+                    # skip to guest / null session
+                    assert False
 
                 log.debug(f'{self.server}: Authenticating as "{self.username}"')
 
@@ -88,23 +90,29 @@ class SMBClient:
                 return True
 
             except Exception as e:
-                e = handle_impacket_error(e, self, display=True)
+
+                if type(e) != AssertionError:
+                    e = handle_impacket_error(e, self, display=True)
+
                 # try guest account, then null session if logon failed
-                if self.username not in ['Guest', '']:
-                    if 'LOGON_FAIL' in str(e) or 'PASSWORD_EXPIRED' in str(e):
-                        if 'LOGON_FAIL' in str(e):
-                            log.warning(f'{self.server}: STATUS_LOGON_FAILURE as "{self.username}"')
-                        log.debug(f'{self.server}: Switching to guest session')
-                        self.username = 'Guest'
-                        self.password = ''
-                        self.domain = ''
-                        self.nthash = ''
-                        guest_success = self.login(refresh=True)
-                        if not guest_success:
-                            log.debug(f'{self.server}: Switching to null session')
-                            self.username = ''
-                            self.login(refresh=True)
-                        return str(e)
+                if first_try:
+
+                    bad_statuses = ['LOGON_FAIL', 'PASSWORD_EXPIRED', 'LOCKED_OUT', 'SESSION_DELETED']
+                    if any([s in str(e) for s in bad_statuses]):
+                        for s in bad_statuses:
+                            if s in str(e):
+                                log.warning(f'{self.server}: {s}: {self.username}')
+
+                    log.debug(f'{self.server}: Trying guest session')
+                    self.username = 'Guest'
+                    self.password = ''
+                    self.domain = ''
+                    self.nthash = ''
+                    guest_success = self.login(refresh=True, first_try=False)
+                    if not guest_success:
+                        log.debug(f'{self.server}: Switching to null session')
+                        self.username = ''
+                        self.login(refresh=True, first_try=False)
 
             return False
 
