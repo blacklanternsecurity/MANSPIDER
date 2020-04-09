@@ -33,20 +33,17 @@ r    '''
         if smb_client is None and self.smb_client is None:
             raise FileRetrievalError('Please specify smb_client')
 
-        memfile = io.BytesIO()
+        #memfile = io.BytesIO()
+        with open(str(self.tmp_filename), 'wb') as f:
 
-        try:
-            smb_client.conn.getFile(self.share, self.name, memfile.write)
-        except Exception as e:
-            handle_impacket_error(e, smb_client, self.share, self.name)
-            raise FileRetrievalError(f'Error retrieving file "{str(self)}": {str(e)[:150]}')
+            try:
+                smb_client.conn.getFile(self.share, self.name, f.write)
+            except Exception as e:
+                handle_impacket_error(e, smb_client, self.share, self.name)
+                raise FileRetrievalError(f'Error retrieving file "{str(self)}": {str(e)[:150]}')
 
         # reset cursor back to zero so .read() will return the whole file
-        memfile.seek(0)
-
-        with open(str(self.tmp_filename), 'wb') as f:
-            file_contents = memfile.read()
-            f.write(file_contents)
+        #memfile.seek(0)
 
 
     def __str__(self):
