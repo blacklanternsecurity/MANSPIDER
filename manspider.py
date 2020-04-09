@@ -24,8 +24,8 @@ def main(options):
             sleep(2)
 
         # exit if no filters were specified
-        if not (options.filenames or options.extensions or options.content):
-            log.error('Please specify at least one of --filenames, --extensions, or --content')
+        if not (options.filenames or options.extensions or options.exclude_extensions or options.content):
+            log.error('Please specify at least one of --filenames, --content, --extensions, or --exclude-extensions')
             return
 
         # exit if --maxdepth is invalid
@@ -68,6 +68,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--threads',      type=int,   default=20,     help='concurrent threads (default: 100)')
     parser.add_argument('-f', '--filenames', nargs='+', default=[],         help=f'filter filenames using regex (space-separated)')
     parser.add_argument('-e', '--extensions',nargs='+', default=[],         help='only show filenames with these extensions (space-separated, e.g. `docx xlsx` for only word & excel docs)')
+    parser.add_argument('--exclude-extensions',nargs='+', default=[],       help='ignore files with these extensions')
     parser.add_argument('-c', '--content',   nargs='+', default=[],         help='search for file content using regex (space-separated)')
     parser.add_argument('--sharenames',      nargs='+', default=[],         help='only search shares with these names (space-separated)')
     parser.add_argument('--exclude-sharenames', nargs='+', default=['IPC$'],help='don\'t search shares with these names (space-separated, e.g. `c$ admin$` to exclude default shares)')
@@ -96,6 +97,12 @@ if __name__ == '__main__':
             if not extension.startswith('.'):
                 extension = f'.{extension}'
             options.extensions[i] = extension.lower()
+
+        # make sure extension blacklist is valid
+        for i, extension in enumerate(options.exclude_extensions):
+            if not extension.startswith('.'):
+                extension = f'.{extension}'
+            options.exclude_extensions[i] = extension.lower()
 
         # lowercase share names
         options.sharenames = [s.lower() for s in options.sharenames]

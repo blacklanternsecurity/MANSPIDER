@@ -285,7 +285,7 @@ class Spiderling:
         filename_match = self.filename_match(file)
         extension_match = self.extension_match(file)
         if self.parent.or_logic:
-            return (filename_match and self.parent.filename_filters) or (extension_match and self.parent.file_extensions)
+            return (filename_match and self.parent.filename_filters) or (extension_match and (self.parent.file_extensions or self.parent.extension_blacklist))
         else:
             return filename_match and extension_match
 
@@ -352,18 +352,24 @@ class Spiderling:
         Return true if "filename" matches any of the extension filters
         '''
 
-        file_extension_filters = list(self.parent.file_extensions)
+        extensions = list(self.parent.file_extensions)
+        excluded_extensions = list(self.parent.extension_blacklist)
 
-        if not file_extension_filters:
+        if not extensions and not excluded_extensions:
             return True
 
         # a .tar.gz file will match both filters ".gz" and ".tar.gz"
         extension = ''.join(Path(filename).suffixes).lower()
 
-        if any([extension.endswith(e) for e in file_extension_filters]):
-            return True
+        # if whitelist check passes
+        if (not extensions) or any([extension.endswith(e) for e in extensions]):
+            # and blacklist check passes
+            if (not excluded_extensions) or not any([extension.endswith(e) for e in excluded_extensions]):
+                return True
+            else:
+                log.debug(f'{self.target}: Skipping file with blacklisted extension: {filename}')
         else:
-            log.debug(f'{self.target}: {filename} does not match extension filters')
+            log.debug(f'{self.target}: Skipping file {filename}, does not match extension filters')
 
         return False
 

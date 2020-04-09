@@ -67,7 +67,7 @@ class SMBClient:
                     # skip to guest / null session
                     assert False
 
-                log.debug(f'{self.server}: Authenticating as "{self.username}"')
+                log.debug(f'{self.server}: Authenticating as "{self.domain}\\{self.username}"')
 
                 # pass the hash if requested
                 if self.nthash and not self.password:

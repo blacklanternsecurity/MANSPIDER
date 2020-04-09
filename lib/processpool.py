@@ -6,7 +6,7 @@ from queue import Empty, Full
 
 
 # set up logging
-log = logging.getLogger('credshed.processpool')
+log = logging.getLogger('manspider.processpool')
 
 
 
@@ -112,6 +112,8 @@ class ProcessPool:
         except Exception as e:
             if type(e) not in [FileNotFoundError]:
                 log.critical(format_exc())
+        except KeyboardInterrupt as e:
+            log.critical('ProcessPool Interrupted')
 
 
     @staticmethod

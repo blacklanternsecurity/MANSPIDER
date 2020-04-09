@@ -41,6 +41,7 @@ class MANSPIDER:
         # e.g. file is downloaded if filename OR extension OR content match
         self.or_logic           = options.or_logic
 
+        self.extension_blacklist= options.exclude_extensions
         self.file_extensions    = options.extensions
         if self.file_extensions:
             extensions_str = '"' + '", "'.join(list(self.file_extensions)) + '"'
