@@ -134,5 +134,5 @@ class ProcessPool:
 
         try:
             self._close_queue(self.result_queue)
-        except:
+        except Exception:
             pass

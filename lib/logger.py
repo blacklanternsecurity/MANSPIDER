@@ -75,7 +75,7 @@ class CustomQueueListener(QueueListener):
     def _monitor(self):
         try:
             super()._monitor()
-        except:
+        except Exception:
             pass
 
 

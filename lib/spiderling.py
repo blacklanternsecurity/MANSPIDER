@@ -1,3 +1,4 @@
+import string
 import logging
 from .smb import *
 from .file import *
@@ -123,9 +124,9 @@ class Spiderling:
 
                 # otherwise, just save it
                 elif self.target != 'loot':
+                    log.info(f'{self.target}: {file} ({bytes_to_human(file.size)})')
                     if not self.parent.no_download:
                         self.save_file(file)
-                    log.info(f'{self.target}: {file} ({bytes_to_human(file.size)})')
 
 
 
@@ -402,10 +403,17 @@ class Spiderling:
         Moves a file from temp storage into the loot directory
         '''
 
+        allowed_chars = string.ascii_lowercase + string.ascii_uppercase + string.digits + '. '
+
         # replace backslashes with underscores to preserve directory names
         loot_filename = str(remote_file).replace('\\', '_')
+        # remove weird characters
+        loot_filename = ''.join([c for c in loot_filename if c in allowed_chars])
         loot_dest = self.parent.loot_dir / loot_filename
-        move(str(remote_file.tmp_filename), str(loot_dest))
+        try:
+            move(str(remote_file.tmp_filename), str(loot_dest))
+        except Exception:
+            log.warning(f'Error saving {remote_file}')
 
 
     def get_file(self, remote_file):

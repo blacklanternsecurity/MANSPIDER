@@ -97,7 +97,7 @@ def better_decode(b):
 
     try:
         return b.decode(encoding)
-    except:
+    except Exception:
         return str(b)[2:-1]
 
 

@@ -134,6 +134,9 @@ if __name__ == '__main__':
         try:
             # wait for main to finish
             p.join()
+        except:
+            pass
+        try:
             # stop the log listener
             listener.stop()
         except:

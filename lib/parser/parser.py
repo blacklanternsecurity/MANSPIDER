@@ -166,7 +166,7 @@ class FileParser:
         # try to convert to UTF-8 for grep-friendliness
         try:
             binary_content = text_content.encode('utf-8')
-        except:
+        except Exception:
             pass
             
         # count the matches
