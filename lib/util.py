@@ -5,10 +5,7 @@ import random
 import logging
 import ipaddress
 from pathlib import Path
-from bs4 import UnicodeDammit
 
-# ignore UnicodeDammit warning
-logging.getLogger().setLevel(logging.CRITICAL)
 log = logging.getLogger('manspider.util')
 
 
