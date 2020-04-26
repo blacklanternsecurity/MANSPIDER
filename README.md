@@ -4,9 +4,9 @@
 ![manspider](https://user-images.githubusercontent.com/20261699/74963251-6a08de80-53df-11ea-88f4-60c39665dfa2.gif)
 
 ### File types supported:
+- `PDF`
 - `DOCX`
 - `XLSX`
-- `PDF`
 - `PPTX`
 - any text-based format
 - and many more!!
@@ -14,7 +14,7 @@
 ### MAN-SPIDER will crawl every share on every target system.  If provided creds don't work, it will fall back to "guest", then to a null session.
 ![manspider](https://user-images.githubusercontent.com/20261699/80316979-f9ab7e80-87ce-11ea-9628-3c22a07e8378.png)
 
-## Installation:
+### Installation:
 (Optional) `apt install` these dependencies to add additional file parsing capability:
 - `antiword` (for legacy `.doc` support)
 ~~~
@@ -24,13 +24,13 @@ $ pipenv --python 3 shell
 (manspider) $ pip install -r requirements.txt
 ~~~
 
-## Example #1: Search the network for juicy-sounding filenames
+### Example #1: Search the network for juicy-sounding filenames
 NOTE: matching files are automatically downloaded into `./loot`!
 ~~~
 ./manspider.py 192.168.0.0/24 -v -f passw user admin network login logon -d evilcorp -u bob -p Spring2020
 ~~~
 
-## Example #2: Search for XLSX files containing "password"
+### Example #2: Search for XLSX files containing "password"
 NOTE: matching files are automatically downloaded into `./loot`!
 ~~~
 ./manspider.py share.evilcorp.local -v -c password -e xlsx -d evilcorp -u bob -p Spring2020
