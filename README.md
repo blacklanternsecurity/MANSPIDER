@@ -36,10 +36,11 @@ NOTE: matching files are automatically downloaded into `./loot`!
 ~~~
 
 ## Usage Note:
-Reasonable limits are in place to prevent spidering a single target forever.  All of these can be overridden
-- default spider depth: 10 (override with `-m`)
-- default max filesize: 10 (override with `-s`)
-- shares excluded: `C$`, `IPC$`, `ADMIN$` (override with )
+Reasonable defaults prevent unwanted scenarios like spidering a single target forever.  All of these can be overridden:
+- **default spider depth: 10** (override with `-m`)
+- **default max filesize: 10** (override with `-s`)
+- **default threads: 20** (override with `-t`)
+- **shares excluded: `C$`, `IPC$`, `ADMIN$`** (override with `--exclude-sharenames`)
 
 ## Usage:
 ~~~
@@ -73,7 +74,7 @@ optional arguments:
                         maximum depth to spider (default: 10)
   -H HASH, --hash HASH  NTLM hash for authentication
   -t THREADS, --threads THREADS
-                        concurrent threads (default: 100)
+                        concurrent threads (default: 20)
   -f REGEX [REGEX ...], --filenames REGEX [REGEX ...]
                         filter filenames using regex (space-separated)
   -e EXT [EXT ...], --extensions EXT [EXT ...]

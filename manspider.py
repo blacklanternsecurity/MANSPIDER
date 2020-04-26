@@ -65,7 +65,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--domain',       default='',                 help='domain for authentication')
     parser.add_argument('-m', '--maxdepth',     type=int,   default=10,     help='maximum depth to spider (default: 10)')
     parser.add_argument('-H', '--hash',         default='',                 help='NTLM hash for authentication')
-    parser.add_argument('-t', '--threads',      type=int,   default=20,     help='concurrent threads (default: 100)')
+    parser.add_argument('-t', '--threads',      type=int,   default=20,     help='concurrent threads (default: 20)')
     parser.add_argument('-f', '--filenames', nargs='+', default=[],         help=f'filter filenames using regex (space-separated)', metavar='REGEX')
     parser.add_argument('-e', '--extensions',nargs='+', default=[],         help='only show filenames with these extensions (space-separated, e.g. `docx xlsx` for only word & excel docs)', metavar='EXT')
     parser.add_argument('--exclude-extensions',nargs='+', default=[],       help='ignore files with these extensions', metavar='EXT')
