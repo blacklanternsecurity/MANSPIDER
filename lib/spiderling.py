@@ -139,6 +139,9 @@ class Spiderling:
 
         if self.target == 'loot':
             for file in list(list_files(self.parent.loot_dir)):
+                if self.extension_blacklisted(file):
+                    log.debug(f'{self.target}: Skipping {file}: extension is blacklisted')
+                    continue
                 if self.path_match(file) or (self.parent.or_logic and self.parent.parser.content_filters):
                     if self.path_match(file):
                         log.info(Path(file).relative_to(self.parent.loot_dir))
@@ -235,6 +238,7 @@ class Spiderling:
                     # skip the file if it didn't match extension filters
                     if self.extension_blacklisted(name):
                         log.debug(f'{self.target}: Skipping {share}{full_path}: extension is blacklisted')
+                        continue
 
                     if not self.path_match(name):
                         if not (

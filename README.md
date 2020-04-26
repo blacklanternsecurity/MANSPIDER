@@ -36,12 +36,15 @@ NOTE: matching files are automatically downloaded into `./loot`!
 ./manspider.py share.evilcorp.local -v -c password -e xlsx -d evilcorp -u bob -p Spring2020
 ~~~
 
-## Usage Note:
+### Usage Tip:
 Reasonable defaults prevent unwanted scenarios like spidering a single target forever.  All of these can be overridden:
 - **default spider depth: 10** (override with `-m`)
 - **default max filesize: 10** (override with `-s`)
 - **default threads: 20** (override with `-t`)
 - **shares excluded: `C$`, `IPC$`, `ADMIN$`** (override with `--exclude-sharenames`)
+
+### Usage Tip:
+If you want to search downloaded files (in `./loot`), specify **`loot`** as the target
 
 ## Usage:
 ~~~
