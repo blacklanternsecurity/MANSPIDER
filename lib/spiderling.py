@@ -124,7 +124,7 @@ class Spiderling:
 
                 # otherwise, just save it
                 elif self.target != 'loot':
-                    log.info(f'{self.target}: {file} ({bytes_to_human(file.size)})')
+                    log.info(f'{self.target}: {file.share}\\{file.name} ({bytes_to_human(file.size)})')
                     if not self.parent.no_download:
                         self.save_file(file)
 
@@ -142,7 +142,7 @@ class Spiderling:
                 if self.path_match(file) or (self.parent.or_logic and self.parent.parser.content_filters):
                     if self.path_match(file):
                         log.info(Path(file).relative_to(self.parent.loot_dir))
-                    if not self.is_bad_extension(file):
+                    if not self.is_binary_file(file):
                         yield file
                 else:
                     log.debug(f'Skipping {file}: does not match filename/extension filters')
@@ -232,14 +232,17 @@ class Spiderling:
 
                 else:
 
-                    # skip the file if it didn't match filename/extension filters
+                    # skip the file if it didn't match extension filters
+                    if self.extension_blacklisted(name):
+                        log.debug(f'{self.target}: Skipping {share}{full_path}: extension is blacklisted')
+
                     if not self.path_match(name):
                         if not (
                                 # all of these have to be true in order to get past this point
                                 # "or logic" is enabled
                                 self.parent.or_logic and
                                 # and file does not have a "don't parse" extension
-                                (not self.is_bad_extension(name)) and
+                                (not self.is_binary_file(name)) and
                                 # and content filters are enabled
                                 self.parent.parser.content_filters
                             ):
@@ -263,7 +266,7 @@ class Spiderling:
                         # if it matched filename/extension filters and we're downloading files
                         if (self.parent.file_extensions or self.parent.filename_filters) and not self.parent.no_download:
                             # but the extension is marked as "don't parse"
-                            if self.is_bad_extension(name):
+                            if self.is_binary_file(name):
                                 # don't parse it, instead save it and continue
                                 log.info(f'{self.target}: {remote_file.share}\\{remote_file.name}')
                                 if self.get_file(remote_file):
@@ -283,9 +286,9 @@ class Spiderling:
         if the filename + extension meets the requirements
         '''
         filename_match = self.filename_match(file)
-        extension_match = self.extension_match(file)
+        extension_match = self.extension_whitelisted(file)
         if self.parent.or_logic:
-            return (filename_match and self.parent.filename_filters) or (extension_match and (self.parent.file_extensions or self.parent.extension_blacklist))
+            return (filename_match and self.parent.filename_filters) or (extension_match and self.parent.file_extensions)
         else:
             return filename_match and extension_match
 
@@ -347,36 +350,9 @@ class Spiderling:
         return False
 
 
-    def extension_match(self, filename):
+    def is_binary_file(self, filename):
         '''
-        Return true if "filename" matches any of the extension filters
-        '''
-
-        extensions = list(self.parent.file_extensions)
-        excluded_extensions = list(self.parent.extension_blacklist)
-
-        if not extensions and not excluded_extensions:
-            return True
-
-        # a .tar.gz file will match both filters ".gz" and ".tar.gz"
-        extension = ''.join(Path(filename).suffixes).lower()
-
-        # if whitelist check passes
-        if (not extensions) or any([extension.endswith(e) for e in extensions]):
-            # and blacklist check passes
-            if (not excluded_extensions) or not any([extension.endswith(e) for e in excluded_extensions]):
-                return True
-            else:
-                log.debug(f'{self.target}: Skipping file with blacklisted extension: {filename}')
-        else:
-            log.debug(f'{self.target}: Skipping file {filename}, does not match extension filters')
-
-        return False
-
-
-    def is_bad_extension(self, filename):
-        '''
-        Returns True if file is a bad extension type, e.g. encrypted or compressed
+        Returns true if file is a bad extension type, e.g. encrypted or compressed
         '''
 
         extension = ''.join(Path(filename).suffixes).lower()
@@ -384,6 +360,42 @@ class Spiderling:
             log.debug(f'{self.target}: Not parsing {filename} due to undesirable extension')
             return True
         return False
+
+
+    def extension_blacklisted(self, filename):
+        '''
+        Return True if folder, file name, or extension has been blacklisted
+        '''
+        extension = ''.join(Path(filename).suffixes).lower()
+        excluded_extensions = list(self.parent.extension_blacklist)
+
+        if not excluded_extensions:
+            return False
+
+        if not any([extension.endswith(e) for e in excluded_extensions]):
+            return False
+        else:
+            log.debug(f'{self.target}: Skipping file with blacklisted extension: {filename}')
+            return True
+
+
+    def extension_whitelisted(self, filename):
+        '''
+        Return True if file extension has been whitelisted
+        '''
+        # a .tar.gz file will match both filters ".gz" and ".tar.gz"
+        extension = ''.join(Path(filename).suffixes).lower()
+        extensions = list(self.parent.file_extensions)
+
+        if not extensions:
+            return True
+
+        # if whitelist check passes
+        if  any([extension.endswith(e) for e in extensions]):
+            return True
+        else:
+            log.debug(f'{self.target}: Skipping file {filename}, does not match extension filters')
+            return False
 
 
     def message_parent(self, message_type, content=''):
@@ -394,7 +406,6 @@ class Spiderling:
         self.parent.spiderling_queue.put(
             SpiderlingMessage(message_type, self.target, content)
         )
-
 
 
     def parse_local_files(self, files):
@@ -409,7 +420,7 @@ class Spiderling:
         Moves a file from temp storage into the loot directory
         '''
 
-        allowed_chars = string.ascii_lowercase + string.ascii_uppercase + string.digits + '. '
+        allowed_chars = string.ascii_lowercase + string.ascii_uppercase + string.digits + '._ '
 
         # replace backslashes with underscores to preserve directory names
         loot_filename = str(remote_file).replace('\\', '_')

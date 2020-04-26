@@ -121,12 +121,12 @@ class FileParser:
         Parse a file on the local filesystem
         '''
 
-        log.debug(f'Parsing file: {file}')
-
-        matches = dict()
-
         if pretty_filename is None:
             pretty_filename = str(file)
+
+        log.debug(f'Parsing file: {pretty_filename}')
+
+        matches = dict()
 
         try:
 
