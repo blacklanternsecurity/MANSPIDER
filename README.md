@@ -50,6 +50,7 @@ Manspider accepts any combination of the following targets:
 - subnets (CIDR format)
 - files containing any of the above
 - local folders containing files
+
 For example, you could specify any or all of these:
 - **`192.168.1.250`**
 - **`share.evilcorp.local`**
