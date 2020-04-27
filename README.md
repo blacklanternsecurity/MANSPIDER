@@ -44,7 +44,7 @@ Reasonable defaults help prevent unwanted scenarios like a single target taking 
 - **shares excluded: `C$`, `IPC$`, `ADMIN$`** (override with `--exclude-sharenames`)
 
 ### Usage Tip:
-Manspider accepts any combination of the following targets:
+MAN-SPIDER accepts any combination of the following as targets:
 - IPs
 - hostnames
 - subnets (CIDR format)
