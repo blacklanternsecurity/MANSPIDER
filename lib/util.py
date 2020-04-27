@@ -25,20 +25,25 @@ def str_to_list(s):
     return list(l)
 
 
-def str_to_hosts(s):
+def make_targets(s):
     '''
-    Accepts filename, CIDR, IP, or hostname
-    Returns list of targets as IPs or hostnames
+    Accepts filename, CIDR, IP, hostname, file, or folder
+    Returns list of targets as IPs, hostnames, or Path() objects
     '''
 
     targets = set()
 
-    for i in str_to_list(s):
-        try:
-            for ip in ipaddress.ip_network(i, strict=False):
-                targets.add(str(ip))
-        except ValueError:
-            targets.add(i)
+    p = Path(s)
+    if p.is_dir():
+        targets.add(p)
+
+    else:
+        for i in str_to_list(s):
+            try:
+                for ip in ipaddress.ip_network(i, strict=False):
+                    targets.add(str(ip))
+            except ValueError:
+                targets.add(i)
 
     return list(targets)
 

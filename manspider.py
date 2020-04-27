@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import pathlib
 import logging
 import argparse
 import traceback
@@ -19,7 +20,7 @@ def main(options):
     try:
 
         # warn if --or-logic is enabled
-        if options.or_logic and options.content and not options.targets == ['loot']:
+        if options.or_logic and options.content and not all([type(t) == pathlib.PosixPath for t in options.targets]):
             log.warning('WARNING: "--or-logic" causes files to be content-searched even if filename/extension filters do not match!!')
             sleep(2)
 
@@ -59,7 +60,7 @@ if __name__ == '__main__':
     interrupted = False
 
     parser = argparse.ArgumentParser(description='Scan for juicy info sitting on SMB shares. Matching files go into /loot. Logs go into /logs. All filters are case-insensitive.')
-    parser.add_argument('targets', nargs='+',   type=str_to_hosts,          help='IPs, Hostnames, or CIDR ranges to spider (files also supported, NOTE: specify "loot" to only search local files in ./loot)')
+    parser.add_argument('targets', nargs='+',   type=make_targets,          help='IPs, Hostnames, CIDR ranges, or files containing targets to spider (NOTE: local searching also supported, specify "./loot" to search downloaded files)')
     parser.add_argument('-u', '--username',     default='',                 help='username for authentication')
     parser.add_argument('-p', '--password',     default='',                 help='password for authentication')
     parser.add_argument('-d', '--domain',       default='',                 help='domain for authentication')

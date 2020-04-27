@@ -44,7 +44,19 @@ Reasonable defaults prevent unwanted scenarios like spidering a single target fo
 - **shares excluded: `C$`, `IPC$`, `ADMIN$`** (override with `--exclude-sharenames`)
 
 ### Usage Tip:
-If you want to search downloaded files (in `./loot`), specify **`loot`** as the target
+Manspider accepts any combination of the following targets:
+- IPs
+- hostnames
+- subnets (CIDR format)
+- files containing any of the above
+- local folders containing files
+For example, you could specify any or all of these:
+- **`192.168.1.250`**
+- **`share.evilcorp.local`**
+- **`192.168.1.0/24`**
+- **`smb_hosts.txt`**
+- **`./loot`** (to search already-downloaded files)
+    - NOTE: when searching local files, you must specify a directory, not an individual file
 
 ## Usage:
 ~~~
@@ -62,9 +74,10 @@ Scan for juicy info sitting on SMB shares. Matching files go into /loot. Logs
 go into /logs. All filters are case-insensitive.
 
 positional arguments:
-  targets               IPs, Hostnames, or CIDR ranges to spider (files also
-                        supported, NOTE: specify "loot" to only search local
-                        files in ./loot)
+  targets               IPs, Hostnames, CIDR ranges, or files containing
+                        targets to spider (NOTE: local searching also
+                        supported, specify "./loot" to search downloaded
+                        files)
 
 optional arguments:
   -h, --help            show this help message and exit

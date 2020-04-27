@@ -1,12 +1,12 @@
 import string
 import logging
+import pathlib
 from .smb import *
 from .file import *
 from .util import *
 from .errors import *
 import multiprocessing
 from shutil import move
-from pathlib import Path
 from .processpool import *
 from traceback import format_exc
 
@@ -61,11 +61,13 @@ class Spiderling:
             self.target = target
 
             # unless we're only searching local files, connect to target
-            if self.target == 'loot':
+            if type(self.target) == pathlib.PosixPath:
+                self.local = True
                 self.go()
 
             else:
-
+                self.local = False
+                
                 self.smb_client = SMBClient(
                     target,
                     parent.username,
@@ -102,7 +104,7 @@ class Spiderling:
         '''
 
         # local files
-        if self.target == 'loot':
+        if self.local:
             if self.parent.parser.content_filters:
                 self.parse_local_files(self.files)
             else:
@@ -123,7 +125,7 @@ class Spiderling:
                     self.parser_process.start()
 
                 # otherwise, just save it
-                elif self.target != 'loot':
+                elif not self.local:
                     log.info(f'{self.target}: {file.share}\\{file.name} ({bytes_to_human(file.size)})')
                     if not self.parent.no_download:
                         self.save_file(file)
@@ -137,14 +139,14 @@ class Spiderling:
         Premptively download matching files into temp directory
         '''
 
-        if self.target == 'loot':
-            for file in list(list_files(self.parent.loot_dir)):
+        if self.local:
+            for file in list(list_files(self.target)):
                 if self.extension_blacklisted(file):
                     log.debug(f'{self.target}: Skipping {file}: extension is blacklisted')
                     continue
                 if self.path_match(file) or (self.parent.or_logic and self.parent.parser.content_filters):
                     if self.path_match(file):
-                        log.info(Path(file).relative_to(self.parent.loot_dir))
+                        log.info(pathlib.Path(file).relative_to(self.target))
                     if not self.is_binary_file(file):
                         yield file
                 else:
@@ -175,9 +177,8 @@ class Spiderling:
                     file.tmp_filename.unlink()
 
             else:
-                shortened_file = f'./loot/{file.relative_to(self.parent.loot_dir)}'
-                log.debug(f'Found file: {shortened_file}')
-                self.parent.parser.parse_file(file, shortened_file)
+                log.debug(f'Found file: {file}')
+                self.parent.parser.parse_file(file, file)
 
         # log all exceptions
         except Exception as e:
@@ -346,7 +347,7 @@ class Spiderling:
         Return true if "filename" matches any of the filename filters
         '''
 
-        if (not self.parent.filename_filters) or any([f_regex.match(str(Path(filename).stem)) for f_regex in self.parent.filename_filters]):
+        if (not self.parent.filename_filters) or any([f_regex.match(str(pathlib.Path(filename).stem)) for f_regex in self.parent.filename_filters]):
             return True
         else:
             log.debug(f'{self.target}: {filename} does not match filename filters')
@@ -359,7 +360,7 @@ class Spiderling:
         Returns true if file is a bad extension type, e.g. encrypted or compressed
         '''
 
-        extension = ''.join(Path(filename).suffixes).lower()
+        extension = ''.join(pathlib.Path(filename).suffixes).lower()
         if any([extension.endswith(e.lower()) for e in self.dont_parse]):
             log.debug(f'{self.target}: Not parsing {filename} due to undesirable extension')
             return True
@@ -370,7 +371,7 @@ class Spiderling:
         '''
         Return True if folder, file name, or extension has been blacklisted
         '''
-        extension = ''.join(Path(filename).suffixes).lower()
+        extension = ''.join(pathlib.Path(filename).suffixes).lower()
         excluded_extensions = list(self.parent.extension_blacklist)
 
         if not excluded_extensions:
@@ -388,7 +389,7 @@ class Spiderling:
         Return True if file extension has been whitelisted
         '''
         # a .tar.gz file will match both filters ".gz" and ".tar.gz"
-        extension = ''.join(Path(filename).suffixes).lower()
+        extension = ''.join(pathlib.Path(filename).suffixes).lower()
         extensions = list(self.parent.file_extensions)
 
         if not extensions:
