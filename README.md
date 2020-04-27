@@ -37,7 +37,7 @@ NOTE: matching files are automatically downloaded into `./loot`!
 ~~~
 
 ### Usage Tip:
-Reasonable defaults prevent unwanted scenarios like spidering a single target forever.  All of these can be overridden:
+Reasonable defaults help prevent unwanted scenarios like a single target taking forever.  All of these can be overridden:
 - **default spider depth: 10** (override with `-m`)
 - **default max filesize: 10** (override with `-s`)
 - **default threads: 20** (override with `-t`)
