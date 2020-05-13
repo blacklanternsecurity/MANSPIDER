@@ -27,21 +27,27 @@ $ pipenv --python 3 shell
 ### Example #1: Search the network for juicy-sounding filenames
 NOTE: matching files are automatically downloaded into `./loot`!
 ~~~
-./manspider.py 192.168.0.0/24 -v -f passw user admin network login logon -d evilcorp -u bob -p Spring2020
+./manspider.py 192.168.0.0/24 -v -f passw user admin account network login logon cred -d evilcorp -u bob -p Passw0rd
 ~~~
 
 ### Example #2: Search for XLSX files containing "password"
 NOTE: matching files are automatically downloaded into `./loot`!
 ~~~
-./manspider.py share.evilcorp.local -v -c password -e xlsx -d evilcorp -u bob -p Spring2020
+./manspider.py share.evilcorp.local -v -c password -e xlsx -d evilcorp -u bob -p Passw0rd
+~~~
+
+### Example #3: Search for interesting file extensions
+NOTE: matching files are automatically downloaded into `./loot`!
+~~~
+./manspider.py share.evilcorp.local -v -e bat com vbs ps1 psd1 psm1 reg txt cfg conf config -d evilcorp -u bob -p Passw0rd
 ~~~
 
 ### Usage Tip:
-Reasonable defaults help prevent unwanted scenarios like a single target taking forever.  All of these can be overridden:
+Reasonable defaults help prevent unwanted scenarios like getting stuck on a single target.  All of these can be overridden:
 - **default spider depth: 10** (override with `-m`)
 - **default max filesize: 10** (override with `-s`)
-- **default threads: 20** (override with `-t`)
-- **shares excluded: `C$`, `IPC$`, `ADMIN$`** (override with `--exclude-sharenames`)
+- **default threads: 5** (override with `-t`)
+- **shares excluded: `C$`, `IPC$`, `ADMIN$`, `PRINT$`** (override with `--exclude-sharenames`)
 
 ### Usage Tip:
 MAN-SPIDER accepts any combination of the following as targets:
@@ -92,7 +98,7 @@ optional arguments:
                         maximum depth to spider (default: 10)
   -H HASH, --hash HASH  NTLM hash for authentication
   -t THREADS, --threads THREADS
-                        concurrent threads (default: 20)
+                        concurrent threads (default: 5)
   -f REGEX [REGEX ...], --filenames REGEX [REGEX ...]
                         filter filenames using regex (space-separated)
   -e EXT [EXT ...], --extensions EXT [EXT ...]

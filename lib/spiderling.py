@@ -146,7 +146,7 @@ class Spiderling:
                     continue
                 if self.path_match(file) or (self.parent.or_logic and self.parent.parser.content_filters):
                     if self.path_match(file):
-                        log.info(pathlib.Path(file).relative_to(self.target))
+                        log.debug(pathlib.Path(file).relative_to(self.target))
                     if not self.is_binary_file(file):
                         yield file
                 else:
@@ -397,6 +397,7 @@ class Spiderling:
 
         # if whitelist check passes
         if  any([extension.endswith(e) for e in extensions]):
+            log.debug(f'{self.target}: {filename} matches extension filters')
             return True
         else:
             log.debug(f'{self.target}: Skipping file {filename}, does not match extension filters')
