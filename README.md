@@ -45,7 +45,7 @@ NOTE: matching files are automatically downloaded into `./loot`!
 ### Usage Tip:
 Reasonable defaults help prevent unwanted scenarios like getting stuck on a single target.  All of these can be overridden:
 - **default spider depth: 10** (override with `-m`)
-- **default max filesize: 10** (override with `-s`)
+- **default max filesize: 10MB** (override with `-s`)
 - **default threads: 5** (override with `-t`)
 - **shares excluded: `C$`, `IPC$`, `ADMIN$`, `PRINT$`** (override with `--exclude-sharenames`)
 
