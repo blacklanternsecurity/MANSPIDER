@@ -12,10 +12,12 @@ import multiprocessing
 
 # set up logging
 log = logging.getLogger('manspider')
-log.setLevel('INFO')
+log.setLevel(logging.INFO)
 
 
 def main(options):
+
+    log.info('MANSPIDER command executed: ' + ' '.join(sys.argv))
 
     try:
 
@@ -82,11 +84,11 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--max-filesize', type=human_to_int, default=human_to_int('10M'), help=f'don\'t retrieve files over this size, e.g. "500K" or ".5M" (default: 10M)', metavar='SIZE')
     parser.add_argument('-v', '--verbose', action='store_true',             help='show debugging messages')
 
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(1)
-
     try:
+
+        if len(sys.argv) == 1:
+            parser.print_help()
+            sys.exit(1)
 
         options = parser.parse_args()
 
@@ -139,6 +141,7 @@ if __name__ == '__main__':
             log.critical(f'Critical error (-v to debug): {e}')
 
     finally:
+        sleep(1)
         try:
             # wait for main to finish
             p.join()

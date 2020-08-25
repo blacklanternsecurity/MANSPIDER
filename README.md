@@ -39,7 +39,7 @@ NOTE: matching files are automatically downloaded into `./loot`!
 ### Example #3: Search for interesting file extensions
 NOTE: matching files are automatically downloaded into `./loot`!
 ~~~
-./manspider.py share.evilcorp.local -v -e bat com vbs ps1 psd1 psm1 reg txt cfg conf config -d evilcorp -u bob -p Passw0rd
+./manspider.py share.evilcorp.local -v -e bat com vbs ps1 psd1 psm1 pem key rsa pub reg txt cfg conf config -d evilcorp -u bob -p Passw0rd
 ~~~
 
 ### Usage Tip:
