@@ -130,6 +130,8 @@ class Spiderling:
                     if not self.parent.no_download:
                         self.save_file(file)
 
+        log.info(f'Finished spidering {self.target}')
+
 
 
     @property
