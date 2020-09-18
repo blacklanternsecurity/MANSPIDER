@@ -24,32 +24,39 @@ $ pipenv --python 3 shell
 (manspider) $ pip install -r requirements.txt
 ~~~
 
-### Example #1: Search the network for juicy-sounding filenames
-NOTE: matching files are automatically downloaded into `./loot`!
+### Example #1: Search the network for filenames that may contain creds
+NOTE: matching files are automatically downloaded into `./loot`! (`-n` to disable)
 ~~~
-./manspider.py 192.168.0.0/24 -v -f passw user admin account network login logon cred -d evilcorp -u bob -p Passw0rd
+./manspider.py 192.168.0.0/24 -f passw user admin account network login logon cred -d evilcorp -u bob -p Passw0rd
 ~~~
 
 ### Example #2: Search for XLSX files containing "password"
-NOTE: matching files are automatically downloaded into `./loot`!
 ~~~
-./manspider.py share.evilcorp.local -v -c password -e xlsx -d evilcorp -u bob -p Passw0rd
+./manspider.py share.evilcorp.local -c password -e xlsx -d evilcorp -u bob -p Passw0rd
 ~~~
 
 ### Example #3: Search for interesting file extensions
-NOTE: matching files are automatically downloaded into `./loot`!
 ~~~
-./manspider.py share.evilcorp.local -v -e bat com vbs ps1 psd1 psm1 pem key rsa pub reg txt cfg conf config -d evilcorp -u bob -p Passw0rd
+./manspider.py share.evilcorp.local -e bat com vbs ps1 psd1 psm1 pem key rsa pub reg txt cfg conf config -d evilcorp -u bob -p Passw0rd
 ~~~
 
-### Usage Tip:
+### Example #4: Search for finance-related files
+This example searches financy-sounding directories for filenames containing 5 or more consecutive numbers (e.g. `000202006.EFT`)
+~~~
+./manspider.py share.evilcorp.local --dirnames bank financ payable payment reconcil remit voucher vendor eft swift -f '[0-9]{5,}' -d evilcorp -u bob -p Passw0rd
+~~~
+
+### Usage Tip #1:
+While MAN-SPIDER is running, you can open another window and use it to search local files by specifying `./loot` as the target
+
+### Usage Tip #2:
 Reasonable defaults help prevent unwanted scenarios like getting stuck on a single target.  All of these can be overridden:
 - **default spider depth: 10** (override with `-m`)
 - **default max filesize: 10MB** (override with `-s`)
 - **default threads: 5** (override with `-t`)
 - **shares excluded: `C$`, `IPC$`, `ADMIN$`, `PRINT$`** (override with `--exclude-sharenames`)
 
-### Usage Tip:
+### Usage Tip #3:
 MAN-SPIDER accepts any combination of the following as targets:
 - IPs
 - hostnames
@@ -77,8 +84,8 @@ usage: manspider.py [-h] [-u USERNAME] [-p PASSWORD] [-d DOMAIN] [-m MAXDEPTH]
                     [-o] [-s SIZE] [-v]
                     targets [targets ...]
 
-Scan for juicy info sitting on SMB shares. Matching files go into /loot. Logs
-go into /logs. All filters are case-insensitive.
+Scan for juicy info sitting on SMB shares. Matching files go into ./loot. Logs
+go into ./logs. All filters are case-insensitive.
 
 positional arguments:
   targets               IPs, Hostnames, CIDR ranges, or files containing
@@ -123,7 +130,7 @@ optional arguments:
                         don't search directories containing these strings
                         (multiple supported)
   -q, --quiet           don't display matching file content
-  -n, --no-download     don't download matching files into /loot
+  -n, --no-download     don't download matching files into ./loot
   -mfail INT, --max-failed-logons INT
                         limit failed logons
   -o, --or-logic        use OR logic instead of AND (files are downloaded if

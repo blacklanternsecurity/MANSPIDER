@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     interrupted = False
 
-    parser = argparse.ArgumentParser(description='Scan for juicy info sitting on SMB shares. Matching files go into /loot. Logs go into /logs. All filters are case-insensitive.')
+    parser = argparse.ArgumentParser(description='Scan for juicy info sitting on SMB shares. Matching files go into ./loot. Logs go into ./logs. All filters are case-insensitive.')
     parser.add_argument('targets', nargs='+',   type=make_targets,          help='IPs, Hostnames, CIDR ranges, or files containing targets to spider (NOTE: local searching also supported, specify "./loot" to search downloaded files)')
     parser.add_argument('-u', '--username',     default='',                 help='username for authentication')
     parser.add_argument('-p', '--password',     default='',                 help='password for authentication')
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     parser.add_argument('--dirnames',      nargs='+', default=[],           help='only search directories containing these strings (multiple supported)', metavar='DIR')
     parser.add_argument('--exclude-dirnames', nargs='+', default=[],        help='don\'t search directories containing these strings (multiple supported)', metavar='DIR')
     parser.add_argument('-q', '--quiet',   action='store_true',             help='don\'t display matching file content')
-    parser.add_argument('-n', '--no-download',   action='store_true',       help='don\'t download matching files into /loot')
+    parser.add_argument('-n', '--no-download',   action='store_true',       help='don\'t download matching files into ./loot')
     parser.add_argument('-mfail', '--max-failed-logons', type=int,          help='limit failed logons', metavar='INT')
     parser.add_argument('-o', '--or-logic', action='store_true',            help=f'use OR logic instead of AND (files are downloaded if filename OR extension OR content match)')
     parser.add_argument('-s', '--max-filesize', type=human_to_int, default=human_to_int('10M'), help=f'don\'t retrieve files over this size, e.g. "500K" or ".5M" (default: 10M)', metavar='SIZE')
