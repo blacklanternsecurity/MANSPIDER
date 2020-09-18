@@ -47,7 +47,7 @@ This example searches financy-sounding directories for filenames containing 5 or
 ~~~
 
 ### Usage Tip #1:
-While MAN-SPIDER is running, you can open another window and use it to search local files by specifying `./loot` as the target
+You can open an additional window and search files downloaded by a running instance of MAN-SPIDER.  To do this, specify `./loot` as the target, and only files in `./loot` will be searched (similar to `grep -R`, except it can also search PDF, DOCS, XLSX, etc.)
 
 ### Usage Tip #2:
 Reasonable defaults help prevent unwanted scenarios like getting stuck on a single target.  All of these can be overridden:
