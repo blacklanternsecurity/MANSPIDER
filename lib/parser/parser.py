@@ -134,7 +134,10 @@ class FileParser:
 
         except Exception as e:
             #except (BadZipFile, textract.exceptions.CommandLineError) as e:
-            log.warning(f'Error extracting text from {pretty_filename}: {e}')
+            if log.level <= logging.DEBUG:
+                log.warning(f'Error extracting text from {pretty_filename}: {e}')
+            else:
+                log.warning(f'Error extracting text from {pretty_filename} (-v to debug)')
             
         return matches
 
