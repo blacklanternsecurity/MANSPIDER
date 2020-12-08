@@ -15,8 +15,15 @@
 ![manspider](https://user-images.githubusercontent.com/20261699/80316979-f9ab7e80-87ce-11ea-9628-3c22a07e8378.png)
 
 ### Installation:
-(Optional) `apt install` these dependencies to add additional file parsing capability:
-- `antiword` (for legacy `.doc` support)
+(Optional) these dependencies to add additional file parsing capability:
+~~~
+# for images (png, jpeg)
+$ sudo apt install tesseract tesseract-data-eng
+
+# for legacy document support (.doc)
+$ sudo apt install antiword
+~~~
+Install manspider:
 ~~~
 $ git clone https://github.com/blacklanternsecurity/MANSPIDER
 $ cd MANSPIDER

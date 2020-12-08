@@ -22,12 +22,15 @@ class FileParser:
         '.pptx',
         '.pdf',
         '.eml',
+        '.png',
+        '.jpg',
+        '.jpeg'
     ]
 
     # don't parse files with these magic types
     magic_blacklist = [
         # PNG, JPEG, etc.
-        'image data',
+        # 'image data',
         # ZIP, GZ, etc.
         'archive data',
         # encrypted data
@@ -111,7 +114,7 @@ class FileParser:
                 )
                 grep_output = grep_process.communicate(content)[0]
                 for line in grep_output.splitlines():
-                    log.info(better_decode(line[:100]))
+                    log.info(better_decode(line[:500]))
             except (sp.SubprocessError, OSError, IndexError):
                 pass
 

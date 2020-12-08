@@ -37,7 +37,7 @@ class Spiderling:
     Designed to be threadable
     '''
 
-    # these extensions don't get parsed for content
+    # these extensions don't get parsed for content, unless explicitly specified
     dont_parse = [
         '.png',
         '.gif',
@@ -364,8 +364,9 @@ class Spiderling:
 
         extension = ''.join(pathlib.Path(filename).suffixes).lower()
         if any([extension.endswith(e.lower()) for e in self.dont_parse]):
-            log.debug(f'{self.target}: Not parsing {filename} due to undesirable extension')
-            return True
+            if extension not in self.parent.file_extensions:
+                log.debug(f'{self.target}: Not parsing {filename} due to undesirable extension')
+                return True
         return False
 
 
