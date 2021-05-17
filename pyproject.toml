@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "manspider"
+version = "1.0.0"
+description = "Full-featured SMB spider capable of searching file content"
+authors = ["TheTechromancer"]
+license = "GPL-3.0"
+
+[tool.poetry.scripts]
+manspider = 'manspider.manspider:main'
+
+[tool.poetry.dependencies]
+python = "^3.9"
+impacket = "^0.9.22"
+textract = "^1.6.3"
+python-magic = "^0.4.22"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

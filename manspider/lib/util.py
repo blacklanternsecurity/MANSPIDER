@@ -34,7 +34,10 @@ def make_targets(s):
     targets = set()
 
     p = Path(s)
-    if p.is_dir():
+    if s.lower() == 'loot':
+        targets.add(Path.home() / '.manspider' / 'loot')
+
+    elif p.is_dir():
         targets.add(p)
 
     else:

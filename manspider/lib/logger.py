@@ -92,8 +92,8 @@ listener = CustomQueueListener(log_queue, console)
 sender = QueueHandler(log_queue)
 logging.getLogger('manspider').handlers = [sender]
 
-logdir = Path(__file__).parent.parent / 'logs'
-logdir.mkdir(exist_ok=True)
+logdir = Path.home() / '.manspider' / 'logs'
+logdir.mkdir(parents=True, exist_ok=True)
 logfile = f'manspider_{datetime.now().strftime("%m-%d-%Y")}.log'
 handler = logging.FileHandler(str(logdir / logfile))
 handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))

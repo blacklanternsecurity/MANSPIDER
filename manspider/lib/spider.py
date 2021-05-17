@@ -35,7 +35,6 @@ class MANSPIDER:
         self.dir_blacklist      = options.exclude_dirnames
 
         self.no_download        = options.no_download
-        self.search_loot        = (True if options.targets == ['loot'] else False)
 
         # applies "or" logic instead of "and"
         # e.g. file is downloaded if filename OR extension OR content match
@@ -60,12 +59,15 @@ class MANSPIDER:
         self.smb_client_cache = dict()
 
         # directory to store documents when searching contents
-        self.tmp_dir = Path('/tmp/manspider')
+        self.tmp_dir = Path('/tmp/.manspider')
         self.tmp_dir.mkdir(exist_ok=True)
 
         # directory to store matching documents
-        self.loot_dir = Path(__file__).parent.parent / 'loot'
-        self.loot_dir.mkdir(exist_ok=True)
+        self.loot_dir = Path.home() / '.manspider' / 'loot'
+        self.loot_dir.mkdir(parents=True, exist_ok=True)
+
+        if not options.no_download:
+            log.info(f'Matching files will be downloaded to {self.loot_dir}')
 
 
     def start(self):
