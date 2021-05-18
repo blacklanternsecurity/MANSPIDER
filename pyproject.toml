@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "manspider"
+name = "man-spider"
 version = "1.0.0"
 description = "Full-featured SMB spider capable of searching file content"
 authors = ["TheTechromancer"]
