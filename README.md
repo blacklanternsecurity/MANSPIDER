@@ -26,7 +26,7 @@ $ sudo apt install antiword
 Install manspider (please be patient, this can take a while):
 ~~~
 $ pip install pipx
-$ pipx install manspider
+$ pipx install man-spider
 ~~~
 
 ### Example #1: Search the network for filenames that may contain creds
