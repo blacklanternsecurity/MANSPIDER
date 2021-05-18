@@ -4,6 +4,8 @@ version = "1.0.0"
 description = "Full-featured SMB spider capable of searching file content"
 authors = ["TheTechromancer"]
 license = "GPL-3.0"
+repository = "https://github.com/blacklanternsecurity/MANSPIDER"
+homepage = "https://github.com/blacklanternsecurity/MANSPIDER"
 
 [tool.poetry.scripts]
 manspider = 'manspider.manspider:main'
