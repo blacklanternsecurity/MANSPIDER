@@ -51,8 +51,13 @@ This example searches financy-sounding directories for filenames containing 5 or
 $ manspider share.evilcorp.local --dirnames bank financ payable payment reconcil remit voucher vendor eft swift -f '[0-9]{5,}' -d evilcorp -u bob -p Passw0rd
 ~~~
 
+### Example #5: Search for certificates
+~~~
+$ manspider share.evilcorp.local -e pfx p12 pkcs12 pem key crt cer csr jks keystore key keys der -d evilcorp -u bob -p Passw0rd
+~~~
+
 ### Usage Tip #1:
-You can run multiple instances of manspider at once. This is useful when you want to search local files (similar to `grep -R`). You can also specify the keyword `loot` as the target, which searches the downloaded files in `$HOME/.manspider/loot`.
+You can run multiple instances of manspider at one time. This is useful when one instance is already running, and you want to search what it's downloaded (similar to `grep -R`). To do this, specify the keyword `loot` as the target, which will search the downloaded files in `$HOME/.manspider/loot`.
 
 ### Usage Tip #2:
 Reasonable defaults help prevent unwanted scenarios like getting stuck on a single target. All of these can be overridden:
