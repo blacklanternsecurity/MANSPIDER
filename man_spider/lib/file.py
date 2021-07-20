@@ -19,7 +19,7 @@ r    '''
         self.smb_client = None
 
         file_suffix = Path(name).suffix.lower()
-        self.tmp_filename = Path('/tmp/manspider') / (random_string(15) + file_suffix)
+        self.tmp_filename = Path('/tmp/.manspider') / (random_string(15) + file_suffix)
 
 
     def get(self, smb_client=None):
