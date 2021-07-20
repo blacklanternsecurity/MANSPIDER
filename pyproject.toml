@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "man-spider"
-version = "1.0.1"
+version = "1.0.2"
 description = "Full-featured SMB spider capable of searching file content"
 authors = ["TheTechromancer"]
 license = "GPL-3.0"
@@ -8,7 +8,7 @@ repository = "https://github.com/blacklanternsecurity/MANSPIDER"
 homepage = "https://github.com/blacklanternsecurity/MANSPIDER"
 
 [tool.poetry.scripts]
-manspider = 'manspider.manspider:main'
+manspider = 'man_spider.manspider:main'
 
 [tool.poetry.dependencies]
 python = "^3.6"
