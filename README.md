@@ -18,7 +18,7 @@
 (Optional) Install these dependencies to add additional file parsing capability:
 ~~~
 # for images (png, jpeg)
-$ sudo apt install tesseract tesseract-data-eng
+$ sudo apt install tesseract-ocr
 
 # for legacy document support (.doc)
 $ sudo apt install antiword
