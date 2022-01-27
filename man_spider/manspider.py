@@ -115,7 +115,7 @@ def main():
 
         # make sure extension formats are valid
         for i, extension in enumerate(options.extensions):
-            if not extension.startswith('.'):
+            if extension and not extension.startswith('.'):
                 extension = f'.{extension}'
             options.extensions[i] = extension.lower()
 

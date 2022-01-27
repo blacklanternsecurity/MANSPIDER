@@ -399,7 +399,7 @@ class Spiderling:
             return True
 
         # if whitelist check passes
-        if  any([extension.endswith(e) for e in extensions]):
+        if  any([(extension.endswith(e) if e else extension == e) for e in extensions]):
             log.debug(f'{self.target}: {filename} matches extension filters')
             return True
         else:
