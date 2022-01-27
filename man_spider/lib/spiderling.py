@@ -67,7 +67,7 @@ class Spiderling:
 
             else:
                 self.local = False
-                
+
                 self.smb_client = SMBClient(
                     target,
                     parent.username,
@@ -129,6 +129,8 @@ class Spiderling:
                     log.info(f'{self.target}: {file.share}\\{file.name} ({bytes_to_human(file.size)})')
                     if not self.parent.no_download:
                         self.save_file(file)
+                    else:
+                        self.delete_file(file)
 
         log.info(f'Finished spidering {self.target}')
 
@@ -157,8 +159,7 @@ class Spiderling:
         else:
             for share in self.shares:
                 for remote_file in self.list_files(share):
-                    if not self.parent.no_download:
-                        self.get_file(remote_file)
+                    self.get_file(remote_file)
                     yield remote_file
 
 
@@ -269,7 +270,7 @@ class Spiderling:
 
                     # if it's a non-empty file that's smaller than the size limit
                     if filesize > 0 and filesize < self.parent.max_filesize:
-                        
+
                         # if it matched filename/extension filters and we're downloading files
                         if (self.parent.file_extensions or self.parent.filename_filters) and not self.parent.no_download:
                             # but the extension is marked as "don't parse"
@@ -442,6 +443,17 @@ class Spiderling:
             log.warning(f'Error saving {remote_file}')
 
 
+    def delete_file(self, remote_file):
+        '''
+        Delete a file from temp storage
+        '''
+
+        try:
+            rmtree(str(remote_file.tmp_filename))
+        except Exception:
+            log.warning(f'Error deleting {remote_file}')
+
+
     def get_file(self, remote_file):
         '''
         Attempts to retrieve "remote_file" from share and returns True if successful
@@ -456,3 +468,4 @@ class Spiderling:
             log.debug(f'{self.target}: {e}')
 
         return False
+
