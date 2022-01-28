@@ -129,8 +129,6 @@ class Spiderling:
                     log.info(f'{self.target}: {file.share}\\{file.name} ({bytes_to_human(file.size)})')
                     if not self.parent.no_download:
                         self.save_file(file)
-                    else:
-                        self.delete_file(file)
 
         log.info(f'Finished spidering {self.target}')
 
@@ -441,17 +439,6 @@ class Spiderling:
             move(str(remote_file.tmp_filename), str(loot_dest))
         except Exception:
             log.warning(f'Error saving {remote_file}')
-
-
-    def delete_file(self, remote_file):
-        '''
-        Delete a file from temp storage
-        '''
-
-        try:
-            rmtree(str(remote_file.tmp_filename))
-        except Exception:
-            log.warning(f'Error deleting {remote_file}')
 
 
     def get_file(self, remote_file):
