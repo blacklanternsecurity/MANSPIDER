@@ -157,7 +157,8 @@ class Spiderling:
         else:
             for share in self.shares:
                 for remote_file in self.list_files(share):
-                    self.get_file(remote_file)
+                    if not self.parent.no_download or self.parent.parser.content_filters:
+                        self.get_file(remote_file)
                     yield remote_file
 
 
