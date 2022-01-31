@@ -67,7 +67,7 @@ class Spiderling:
 
             else:
                 self.local = False
-                
+
                 self.smb_client = SMBClient(
                     target,
                     parent.username,
@@ -157,7 +157,7 @@ class Spiderling:
         else:
             for share in self.shares:
                 for remote_file in self.list_files(share):
-                    if not self.parent.no_download:
+                    if not self.parent.no_download or self.parent.parser.content_filters:
                         self.get_file(remote_file)
                     yield remote_file
 
@@ -269,7 +269,7 @@ class Spiderling:
 
                     # if it's a non-empty file that's smaller than the size limit
                     if filesize > 0 and filesize < self.parent.max_filesize:
-                        
+
                         # if it matched filename/extension filters and we're downloading files
                         if (self.parent.file_extensions or self.parent.filename_filters) and not self.parent.no_download:
                             # but the extension is marked as "don't parse"
@@ -456,3 +456,4 @@ class Spiderling:
             log.debug(f'{self.target}: {e}')
 
         return False
+
