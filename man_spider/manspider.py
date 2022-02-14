@@ -83,7 +83,7 @@ def main():
     parser.add_argument('-u', '--username',     default='',                 help='username for authentication')
     parser.add_argument('-p', '--password',     default='',                 help='password for authentication')
     parser.add_argument('-d', '--domain',       default='',                 help='domain for authentication')
-    parser.add_argument('-l','--loot-dir',      default='',                 help='Loot directory (default ~/.manspider/)')
+    parser.add_argument('-l','--loot-dir',      default='',                 help='loot directory (default ~/.manspider/)')
     parser.add_argument('-m', '--maxdepth',     type=int,   default=10,     help='maximum depth to spider (default: 10)')
     parser.add_argument('-H', '--hash',         default='',                 help='NTLM hash for authentication')
     parser.add_argument('-t', '--threads',      type=int,   default=5,      help='concurrent threads (default: 5)')
@@ -117,7 +117,7 @@ def main():
 
         # make sure extension formats are valid
         for i, extension in enumerate(options.extensions):
-            if not extension.startswith('.'):
+            if extension and not extension.startswith('.'):
                 extension = f'.{extension}'
             options.extensions[i] = extension.lower()
 
