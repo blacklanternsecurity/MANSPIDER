@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "man-spider"
-version = "1.0.3"
+version = "1.0.4"
 description = "Full-featured SMB spider capable of searching file content"
 authors = ["TheTechromancer"]
 license = "GPL-3.0"
