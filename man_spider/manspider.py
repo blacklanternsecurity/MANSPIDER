@@ -83,6 +83,7 @@ def main():
     parser.add_argument('-u', '--username',     default='',                 help='username for authentication')
     parser.add_argument('-p', '--password',     default='',                 help='password for authentication')
     parser.add_argument('-d', '--domain',       default='',                 help='domain for authentication')
+    parser.add_argument('-l','--loot-dir',      default='',                 help='loot directory (default ~/.manspider/)')
     parser.add_argument('-m', '--maxdepth',     type=int,   default=10,     help='maximum depth to spider (default: 10)')
     parser.add_argument('-H', '--hash',         default='',                 help='NTLM hash for authentication')
     parser.add_argument('-t', '--threads',      type=int,   default=5,      help='concurrent threads (default: 5)')
@@ -100,6 +101,7 @@ def main():
     parser.add_argument('-o', '--or-logic', action='store_true',            help=f'use OR logic instead of AND (files are downloaded if filename OR extension OR content match)')
     parser.add_argument('-s', '--max-filesize', type=human_to_int, default=human_to_int('10M'), help=f'don\'t retrieve files over this size, e.g. "500K" or ".5M" (default: 10M)', metavar='SIZE')
     parser.add_argument('-v', '--verbose', action='store_true',             help='show debugging messages')
+    
 
     syntax_error = False
     try:

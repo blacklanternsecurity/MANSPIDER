@@ -64,6 +64,10 @@ class MANSPIDER:
 
         # directory to store matching documents
         self.loot_dir = Path.home() / '.manspider' / 'loot'
+
+        if(options.loot_dir):
+            self.loot_dir=Path(options.loot_dir)
+        
         self.loot_dir.mkdir(parents=True, exist_ok=True)
 
         if not options.no_download:
