@@ -10,12 +10,13 @@ class RemoteFile():
     Passed from a spiderling up to its parent spide
 r    '''
 
-    def __init__(self, name, share, target, size=0):
+    def __init__(self, name, share, target, size=0, file_tree_node=None):
 
         self.share = share
         self.target = target
         self.name = name
         self.size = size
+        self.file_tree_node = file_tree_node
         self.smb_client = None
 
         file_suffix = Path(name).suffix.lower()
