@@ -120,9 +120,9 @@ ebooklib==0.17.1 \
 extract-msg==0.29.0 \
     --hash=sha256:a8885dc385d0c88c4b87fb2a573727c0115cd2ef5157956cf183878f940eef28 \
     --hash=sha256:ae6ce5f78fddb582350cb49bbf2776eadecdbf3c74b7a305dced42bd187a5401
-flask==2.0.3; python_version >= "3.6" \
-    --hash=sha256:59da8a3170004800a2837844bfa84d49b022550616070f7cb1a659682b2e7c9f \
-    --hash=sha256:e1120c228ca2f553b470df4a5fa927ab66258467526069981b3eb0a91902687d
+flask==2.3.2; python_version >= "3.6" \
+    --hash=sha256:77fd4e1249d8c9923de34907236b747ced06e5467ecac1a7bb7115ae0e9670b0 \
+    --hash=sha256:8c2f9abd47a9e8df7f0c3f091ce9497d011dc3b31effcf4c85a6e2b50f4114ef
 future==0.18.2; python_version >= "2.6" and python_full_version < "3.0.0" or python_full_version >= "3.3.0" \
     --hash=sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d
 imapclient==2.1.0 \
