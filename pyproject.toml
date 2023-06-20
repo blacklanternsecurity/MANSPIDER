@@ -13,8 +13,8 @@ manspider = 'man_spider.manspider:main'
 [tool.poetry.dependencies]
 python = "^3.6"
 impacket = "^0.9.22"
-textract = "^1.6.3"
 python-magic = "^0.4.22"
+textract = {git = "https://github.com/tehabstract/textract"}
 
 [tool.poetry.dev-dependencies]
 
