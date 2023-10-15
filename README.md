@@ -3,6 +3,18 @@
 
 ![manspider](https://user-images.githubusercontent.com/20261699/74963251-6a08de80-53df-11ea-88f4-60c39665dfa2.gif)
 
+**UPDATE 2023-10-15**: [textract](https://github.com/deanmalmgren/textract), one of manspider's upstream dependencies, has fallen is no longer being updated. For this reason, you may run into problems when installing with pip. The recommended installation method is now Docker:
+
+```bash
+docker run blacklanternsecurity/manspider --help
+```
+
+There is also helper script `manspider.sh` which will automatically mount volumes for MANSPIDER's `loot` and `logs` directory, making it a bit more convenient to run:
+
+```bash
+./manspider.sh --help
+```
+
 ### File types supported:
 - `PDF`
 - `DOCX`
