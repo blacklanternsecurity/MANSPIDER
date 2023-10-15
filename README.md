@@ -8,7 +8,7 @@
 docker run blacklanternsecurity/manspider --help
 ```
 
-Note There is also helper script `manspider.sh` which will automatically mount volumes for manspider's `loot` and `logs` directory, making it a bit more convenient to run:
+Note there is also a helper script `manspider.sh` which will automatically mount volumes for manspider's `loot` and `logs` directories, making it a bit more convenient to run:
 
 ```bash
 ./manspider.sh --help
