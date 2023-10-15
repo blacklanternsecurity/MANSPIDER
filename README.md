@@ -2,7 +2,7 @@
 ### Crawl SMB shares for juicy information. File content searching + regex is supported!
 
 ### UPDATE 2023-10-15
-**[textract](https://github.com/deanmalmgren/textract), one of manspider's upstream dependencies, is no longer being updated. For this reason, you may run into problems when installing with pip. The recommended installation method is now Docker:**
+**[textract](https://github.com/deanmalmgren/textract), one of manspider's upstream dependencies, is no longer being updated. For this reason, you may run into problems when installing with pip. The recommended installation method is now [Docker](https://hub.docker.com/r/blacklanternsecurity/manspider):**
 
 ```bash
 docker run blacklanternsecurity/manspider --help
