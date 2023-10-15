@@ -1,19 +1,20 @@
-# MAN-SPIDER
+# MANSPIDER
 ### Crawl SMB shares for juicy information. File content searching + regex is supported!
 
-![manspider](https://user-images.githubusercontent.com/20261699/74963251-6a08de80-53df-11ea-88f4-60c39665dfa2.gif)
-
-**UPDATE 2023-10-15**: [textract](https://github.com/deanmalmgren/textract), one of manspider's upstream dependencies, has fallen is no longer being updated. For this reason, you may run into problems when installing with pip. The recommended installation method is now Docker:
+### UPDATE 2023-10-15
+**[textract](https://github.com/deanmalmgren/textract), one of manspider's upstream dependencies, is no longer being updated. For this reason, you may run into problems when installing with pip. The recommended installation method is now Docker:**
 
 ```bash
 docker run blacklanternsecurity/manspider --help
 ```
 
-There is also helper script `manspider.sh` which will automatically mount volumes for MANSPIDER's `loot` and `logs` directory, making it a bit more convenient to run:
+Note There is also helper script `manspider.sh` which will automatically mount volumes for manspider's `loot` and `logs` directory, making it a bit more convenient to run:
 
 ```bash
 ./manspider.sh --help
 ```
+
+![manspider](https://user-images.githubusercontent.com/20261699/74963251-6a08de80-53df-11ea-88f4-60c39665dfa2.gif)
 
 ### File types supported:
 - `PDF`
@@ -23,7 +24,7 @@ There is also helper script `manspider.sh` which will automatically mount volume
 - any text-based format
 - and many more!!
 
-### MAN-SPIDER will crawl every share on every target system. If provided creds don't work, it will fall back to "guest", then to a null session.
+### MANSPIDER will crawl every share on every target system. If provided creds don't work, it will fall back to "guest", then to a null session.
 ![manspider](https://user-images.githubusercontent.com/20261699/80316979-f9ab7e80-87ce-11ea-9628-3c22a07e8378.png)
 
 ### Installation:
