@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 
-import sys
-import pathlib
-import logging
 import argparse
+import contextlib
+import sys
 import traceback
-from .lib import *
-from time import sleep
-import multiprocessing
 
+from .lib import *
 
 # set up logging
 log = logging.getLogger('manspider')
@@ -16,14 +13,18 @@ log.setLevel(logging.INFO)
 
 
 def go(options):
-
     log.info('MANSPIDER command executed: ' + ' '.join(sys.argv))
 
     try:
 
         # warn if --or-logic is enabled
-        if options.or_logic and options.content and not all([type(t) == pathlib.PosixPath for t in options.targets]):
-            log.warning('WARNING: "--or-logic" causes files to be content-searched even if filename/extension filters do not match!!')
+        if (
+                options.or_logic
+                and options.content
+                and any(type(t) != pathlib.PosixPath for t in options.targets)
+        ):
+            log.warning(
+                'WARNING: "--or-logic" causes files to be content-searched even if filename/extension filters do not match!!')
             sleep(2)
 
         # exit if no filters were specified
@@ -53,12 +54,11 @@ def go(options):
 
     finally:
         # make sure temp files are cleaned up before exiting
-        #rmdir(manspider.tmp_dir)
+        # rmdir(manspider.tmp_dir)
         pass
 
 
 def main():
-
     interrupted = False
 
     examples = '''
@@ -78,30 +78,53 @@ def main():
     $ manspider share.evilcorp.local --dirnames bank financ payable payment reconcil remit voucher vendor eft swift -f '[0-9]{5,}' -d evilcorp -u bob -p Passw0rd
     '''
 
-    parser = argparse.ArgumentParser(description='Scan for juicy data on SMB shares. Matching files and logs are stored in $HOME/.manspider. All filters are case-insensitive.')
-    parser.add_argument('targets', nargs='+',   type=make_targets,          help='IPs, Hostnames, CIDR ranges, or files containing targets to spider (NOTE: local searching also supported, specify directory name or keyword "loot" to search downloaded files)')
-    parser.add_argument('-u', '--username',     default='',                 help='username for authentication')
-    parser.add_argument('-p', '--password',     default='',                 help='password for authentication')
-    parser.add_argument('-d', '--domain',       default='',                 help='domain for authentication')
-    parser.add_argument('-l','--loot-dir',      default='',                 help='loot directory (default ~/.manspider/)')
-    parser.add_argument('-m', '--maxdepth',     type=int,   default=10,     help='maximum depth to spider (default: 10)')
-    parser.add_argument('-H', '--hash',         default='',                 help='NTLM hash for authentication')
-    parser.add_argument('-t', '--threads',      type=int,   default=5,      help='concurrent threads (default: 5)')
-    parser.add_argument('-f', '--filenames', nargs='+', default=[],         help=f'filter filenames using regex (space-separated)', metavar='REGEX')
-    parser.add_argument('-e', '--extensions',nargs='+', default=[],         help='only show filenames with these extensions (space-separated, e.g. `docx xlsx` for only word & excel docs)', metavar='EXT')
-    parser.add_argument('--exclude-extensions',nargs='+', default=[],       help='ignore files with these extensions', metavar='EXT')
-    parser.add_argument('-c', '--content',   nargs='+', default=[],         help='search for file content using regex (multiple supported)', metavar='REGEX')
-    parser.add_argument('--sharenames',      nargs='+', default=[],         help='only search shares with these names (multiple supported)', metavar='SHARE')
-    parser.add_argument('--exclude-sharenames', nargs='*', default=['IPC$', 'C$', 'ADMIN$', 'PRINT$'],help='don\'t search shares with these names (multiple supported)', metavar='SHARE')
-    parser.add_argument('--dirnames',      nargs='+', default=[],           help='only search directories containing these strings (multiple supported)', metavar='DIR')
-    parser.add_argument('--exclude-dirnames', nargs='+', default=[],        help='don\'t search directories containing these strings (multiple supported)', metavar='DIR')
-    parser.add_argument('-q', '--quiet',   action='store_true',             help='don\'t display matching file content')
-    parser.add_argument('-n', '--no-download',   action='store_true',       help='don\'t download matching files')
-    parser.add_argument('-mfail', '--max-failed-logons', type=int,          help='limit failed logons', metavar='INT')
-    parser.add_argument('-o', '--or-logic', action='store_true',            help=f'use OR logic instead of AND (files are downloaded if filename OR extension OR content match)')
-    parser.add_argument('-s', '--max-filesize', type=human_to_int, default=human_to_int('10M'), help=f'don\'t retrieve files over this size, e.g. "500K" or ".5M" (default: 10M)', metavar='SIZE')
-    parser.add_argument('-v', '--verbose', action='store_true',             help='show debugging messages')
-    
+    parser = argparse.ArgumentParser(
+        description='Scan for juicy data on SMB shares. Matching files and logs are stored in $HOME/.manspider. All filters are case-insensitive.')
+    parser.add_argument('targets', nargs='+', type=make_targets,
+                        help='IPs, Hostnames, CIDR ranges, or files containing targets to spider (NOTE: local searching also supported, specify directory name or keyword "loot" to search downloaded files)')
+    parser.add_argument('-u', '--username', default='', help='username for authentication')
+    parser.add_argument('-p', '--password', default='', help='password for authentication')
+    parser.add_argument('-d', '--domain', default='', help='domain for authentication')
+    parser.add_argument('-l', '--loot-dir', default='', help='loot directory (default ~/.manspider/)')
+    parser.add_argument('-m', '--maxdepth', type=int, default=10, help='maximum depth to spider (default: 10)')
+    parser.add_argument('-H', '--hash', default='', help='NTLM hash for authentication')
+    parser.add_argument('-t', '--threads', type=int, default=5, help='concurrent threads (default: 5)')
+    parser.add_argument(
+        '-f',
+        '--filenames',
+        nargs='+',
+        default=[],
+        help='filter filenames using regex (space-separated)',
+        metavar='REGEX',
+    )
+    parser.add_argument('-e', '--extensions', nargs='+', default=[],
+                        help='only show filenames with these extensions (space-separated, e.g. `docx xlsx` for only word & excel docs)',
+                        metavar='EXT')
+    parser.add_argument('--exclude-extensions', nargs='+', default=[], help='ignore files with these extensions',
+                        metavar='EXT')
+    parser.add_argument('-c', '--content', nargs='+', default=[],
+                        help='search for file content using regex (multiple supported)', metavar='REGEX')
+    parser.add_argument('--sharenames', nargs='+', default=[],
+                        help='only search shares with these names (multiple supported)', metavar='SHARE')
+    parser.add_argument('--exclude-sharenames', nargs='*', default=['IPC$', 'C$', 'ADMIN$', 'PRINT$'],
+                        help='don\'t search shares with these names (multiple supported)', metavar='SHARE')
+    parser.add_argument('--dirnames', nargs='+', default=[],
+                        help='only search directories containing these strings (multiple supported)', metavar='DIR')
+    parser.add_argument('--exclude-dirnames', nargs='+', default=[],
+                        help='don\'t search directories containing these strings (multiple supported)', metavar='DIR')
+    parser.add_argument('-q', '--quiet', action='store_true', help='don\'t display matching file content')
+    parser.add_argument('-n', '--no-download', action='store_true', help='don\'t download matching files')
+    parser.add_argument('-mfail', '--max-failed-logons', type=int, help='limit failed logons', metavar='INT')
+    parser.add_argument(
+        '-o',
+        '--or-logic',
+        action='store_true',
+        help='use OR logic instead of AND (files are downloaded if filename OR extension OR content match)',
+    )
+    parser.add_argument('-s', '--max-filesize', type=human_to_int, default=human_to_int('10M'),
+                        help=f'don\'t retrieve files over this size, e.g. "500K" or ".5M" (default: 10M)',
+                        metavar='SIZE')
+    parser.add_argument('-v', '--verbose', action='store_true', help='show debugging messages')
 
     syntax_error = False
     try:
@@ -154,7 +177,6 @@ def main():
         log.critical('Interrupted')
         sys.exit(1)
 
-    # pretty format all errors if we're not debugging
     except Exception as e:
         if log.level <= logging.DEBUG:
             log.critical(traceback.format_exc())
@@ -165,16 +187,12 @@ def main():
         if '-h' in sys.argv or '--help' in sys.argv or len(sys.argv) == 1 or syntax_error:
             print(examples)
         sleep(1)
-        try:
+        with contextlib.suppress(Exception):
             # wait for go to finish
             p.join()
-        except:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             # stop the log listener
             listener.stop()
-        except:
-            pass
 
 
 if __name__ == '__main__':

@@ -1,17 +1,18 @@
+import contextlib
 import re
-import magic
-import logging
-import textract
-from ..util import *
-from ..logger import *
 import subprocess as sp
+
+import magic
+import textract
+
+from ..logger import *
 from ..logger import ColoredFormatter
+from ..util import *
 
 log = logging.getLogger('manspider.parser')
 
 
 class FileParser:
-
     # parsed using the textract library
     textract_extensions = [
         '.doc',
@@ -37,13 +38,10 @@ class FileParser:
         'encrypted'
     ]
 
-
     def __init__(self, filters, quiet=False):
 
         self.init_content_filters(filters)
         self.quiet = quiet
-
-
 
     def init_content_filters(self, file_content):
         '''
@@ -63,8 +61,6 @@ class FileParser:
             content_filter_str = '"' + '", "'.join([f.pattern for f in self.content_filters]) + '"'
             log.info(f'Searching by file content: {content_filter_str}')
 
-
-
     def match(self, file_content):
         '''
         Finds all regex matches in file content
@@ -74,7 +70,6 @@ class FileParser:
             for match in _filter.finditer(file_content):
                 # ( filter, (match_start_index, match_end_index) )
                 yield (_filter, match.span())
-
 
     def match_magic(self, file):
         '''
@@ -90,12 +85,10 @@ class FileParser:
 
         return True
 
-
-
     def grep(self, content, pattern):
 
         if not self.quiet:
-            try:
+            with contextlib.suppress(sp.SubprocessError, OSError, IndexError):
                 '''
                 GREP(1)
                     -E, --extended-regexp
@@ -115,9 +108,6 @@ class FileParser:
                 grep_output = grep_process.communicate(content)[0]
                 for line in grep_output.splitlines():
                     log.info(better_decode(line[:500]))
-            except (sp.SubprocessError, OSError, IndexError):
-                pass
-
 
     def parse_file(self, file, pretty_filename=None):
         '''
@@ -129,21 +119,20 @@ class FileParser:
 
         log.debug(f'Parsing file: {pretty_filename}')
 
-        matches = dict()
+        matches = {}
 
         try:
 
             matches = self.textract(file, pretty_filename=pretty_filename)
 
         except Exception as e:
-            #except (BadZipFile, textract.exceptions.CommandLineError) as e:
+            # except (BadZipFile, textract.exceptions.CommandLineError) as e:
             if log.level <= logging.DEBUG:
                 log.warning(f'Error extracting text from {pretty_filename}: {e}')
             else:
                 log.warning(f'Error extracting text from {pretty_filename} (-v to debug)')
-            
-        return matches
 
+        return matches
 
     def textract(self, file, pretty_filename):
         '''
@@ -151,7 +140,7 @@ class FileParser:
         Uses the textract library on specific extensions
         '''
 
-        matches = dict()
+        matches = {}
 
         suffix = Path(str(file)).suffix.lower()
 
@@ -170,11 +159,8 @@ class FileParser:
             return matches
 
         # try to convert to UTF-8 for grep-friendliness
-        try:
+        with contextlib.suppress(Exception):
             binary_content = text_content.encode('utf-8')
-        except Exception:
-            pass
-            
         # count the matches
         for _filter, match in self.match(text_content):
             try:
