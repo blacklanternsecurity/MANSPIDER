@@ -1,5 +1,7 @@
-import struct
+import contextlib
 import logging
+import struct
+
 from impacket.nmb import NetBIOSError, NetBIOSTimeout
 from impacket.smb import SessionError, UnsupportedFeature
 from impacket.smbconnection import SessionError as CSessionError
@@ -11,14 +13,18 @@ log = logging.getLogger('manspider')
 class MANSPIDERError(Exception):
     pass
 
+
 class FileRetrievalError(MANSPIDERError):
     pass
+
 
 class ShareListError(MANSPIDERError):
     pass
 
+
 class FileListError(MANSPIDERError):
     pass
+
 
 class LogonFailure(MANSPIDERError):
     pass
@@ -33,11 +39,10 @@ native_impacket_errors = (
     UnsupportedFeature,
 )
 
-
 impacket_errors = (
-    OSError,
-    BrokenPipeError,
-) + native_impacket_errors
+                      OSError,
+                      BrokenPipeError,
+                  ) + native_impacket_errors
 
 
 def impacket_error(e):
@@ -46,11 +51,9 @@ def impacket_error(e):
     '''
 
     if type(e) in (SessionError, CSessionError):
-        try:
+        with contextlib.suppress(IndexError):
             error_str = e.getErrorString()[0]
             e.args = (error_str,)
-        except (IndexError,):
-            pass
     if not e.args:
         e.args = ('',)
     return e
@@ -69,7 +72,7 @@ def handle_impacket_error(e, smb_client, share='', filename='', display=False):
     elif type(e) in (NetBIOSError, NetBIOSTimeout, BrokenPipeError, SessionError, CSessionError):
         # the connection may need to be rebuilt
         if type(e) in (SessionError, CSessionError):
-            if any([x in str(e) for x in ('PASSWORD_EXPIRED',)]):
+            if any(x in str(e) for x in ('PASSWORD_EXPIRED',)):
                 smb_client.rebuild(e)
         else:
             smb_client.rebuild(e)

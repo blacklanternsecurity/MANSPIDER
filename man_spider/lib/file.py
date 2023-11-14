@@ -1,7 +1,7 @@
-import io
-from .util import *
-from .errors import *
 from pathlib import Path
+
+from .errors import *
+from .util import *
 
 
 class RemoteFile():
@@ -21,7 +21,6 @@ r    '''
         file_suffix = Path(name).suffix.lower()
         self.tmp_filename = Path('/tmp/.manspider') / (random_string(15) + file_suffix)
 
-
     def get(self, smb_client=None):
         '''
         Downloads file to self.tmp_filename
@@ -33,18 +32,19 @@ r    '''
         if smb_client is None and self.smb_client is None:
             raise FileRetrievalError('Please specify smb_client')
 
-        #memfile = io.BytesIO()
+        # memfile = io.BytesIO()
         with open(str(self.tmp_filename), 'wb') as f:
 
             try:
                 smb_client.conn.getFile(self.share, self.name, f.write)
             except Exception as e:
                 handle_impacket_error(e, smb_client, self.share, self.name)
-                raise FileRetrievalError(f'Error retrieving file "{str(self)}": {str(e)[:150]}')
+                raise FileRetrievalError(
+                    f'Error retrieving file "{str(self)}": {str(e)[:150]}'
+                ) from e
 
         # reset cursor back to zero so .read() will return the whole file
-        #memfile.seek(0)
-
+        # memfile.seek(0)
 
     def __str__(self):
 

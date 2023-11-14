@@ -1,15 +1,13 @@
-import string
-import logging
-import pathlib
-from .smb import *
-from .file import *
-from .util import *
-from .errors import *
 import multiprocessing
+import pathlib
 from shutil import move
-from .processpool import *
 from traceback import format_exc
 
+from .errors import *
+from .file import *
+from .processpool import *
+from .smb import *
+from .util import *
 
 log = logging.getLogger('manspider.spiderling')
 
@@ -28,7 +26,6 @@ class SpiderlingMessage:
         self.type = message_type
         self.target = target
         self.content = content
-
 
 
 class Spiderling:
@@ -97,7 +94,6 @@ class Spiderling:
             else:
                 log.error(f'Error in spiderling: {e}')
 
-
     def go(self):
         '''
         go spider go spider go
@@ -132,8 +128,6 @@ class Spiderling:
 
         log.info(f'Finished spidering {self.target}')
 
-
-
     @property
     def files(self):
         '''
@@ -160,8 +154,6 @@ class Spiderling:
                     if not self.parent.no_download or self.parent.parser.content_filters:
                         self.get_file(remote_file)
                     yield remote_file
-
-
 
     def parse_file(self, file):
         '''
@@ -192,7 +184,6 @@ class Spiderling:
         except KeyboardInterrupt:
             log.critical('File parsing interrupted')
 
-
     @property
     def shares(self):
         '''
@@ -202,8 +193,6 @@ class Spiderling:
         for share in self.smb_client.shares:
             if self.share_match(share):
                 yield share
-
-
 
     def list_files(self, share, path='', depth=0, tries=2):
         '''
@@ -233,7 +222,7 @@ class Spiderling:
                 full_path = f'{path}\\{name}'
                 # if it's a directory, go deeper
                 if f.is_directory():
-                    for file in self.list_files(share, full_path, (depth+1)):
+                    for file in self.list_files(share, full_path, (depth + 1)):
                         yield file
 
                 else:
@@ -252,7 +241,7 @@ class Spiderling:
                                 (not self.is_binary_file(name)) and
                                 # and content filters are enabled
                                 self.parent.parser.content_filters
-                            ):
+                        ):
                             log.debug(f'{self.target}: Skipping {share}{full_path}: filename/extensions do not match')
                             continue
 
@@ -271,7 +260,8 @@ class Spiderling:
                     if filesize > 0 and filesize < self.parent.max_filesize:
 
                         # if it matched filename/extension filters and we're downloading files
-                        if (self.parent.file_extensions or self.parent.filename_filters) and not self.parent.no_download:
+                        if (
+                                self.parent.file_extensions or self.parent.filename_filters) and not self.parent.no_download:
                             # but the extension is marked as "don't parse"
                             if self.is_binary_file(name):
                                 # don't parse it, instead save it and continue
@@ -286,7 +276,6 @@ class Spiderling:
                     else:
                         log.debug(f'{self.target}: {full_path} is either empty or too large')
 
-
     def path_match(self, file):
         '''
         Based on whether "or" logic is enabled, return True or False
@@ -295,11 +284,10 @@ class Spiderling:
         filename_match = self.filename_match(file)
         extension_match = self.extension_whitelisted(file)
         if self.parent.or_logic:
-            return (filename_match and self.parent.filename_filters) or (extension_match and self.parent.file_extensions)
+            return (filename_match and self.parent.filename_filters) or (
+                        extension_match and self.parent.file_extensions)
         else:
             return filename_match and extension_match
-
-
 
     def share_match(self, share):
         '''
@@ -317,7 +305,6 @@ class Spiderling:
             log.debug(f'{self.target}: Skipping share {share}: not in whitelist')
 
         return False
-
 
     def dir_match(self, path):
         '''
@@ -343,19 +330,18 @@ class Spiderling:
 
         return False
 
-
     def filename_match(self, filename):
         '''
         Return true if "filename" matches any of the filename filters
         '''
 
-        if (not self.parent.filename_filters) or any([f_regex.match(str(pathlib.Path(filename).stem)) for f_regex in self.parent.filename_filters]):
+        if (not self.parent.filename_filters) or any(
+                [f_regex.match(str(pathlib.Path(filename).stem)) for f_regex in self.parent.filename_filters]):
             return True
         else:
             log.debug(f'{self.target}: {filename} does not match filename filters')
 
         return False
-
 
     def is_binary_file(self, filename):
         '''
@@ -368,7 +354,6 @@ class Spiderling:
                 log.debug(f'{self.target}: Not parsing {filename} due to undesirable extension')
                 return True
         return False
-
 
     def extension_blacklisted(self, filename):
         '''
@@ -386,7 +371,6 @@ class Spiderling:
             log.debug(f'{self.target}: Skipping file with blacklisted extension: {filename}')
             return True
 
-
     def extension_whitelisted(self, filename):
         '''
         Return True if file extension has been whitelisted
@@ -399,13 +383,12 @@ class Spiderling:
             return True
 
         # if whitelist check passes
-        if  any([(extension.endswith(e) if e else extension == e) for e in extensions]):
+        if any([(extension.endswith(e) if e else extension == e) for e in extensions]):
             log.debug(f'{self.target}: {filename} matches extension filters')
             return True
         else:
             log.debug(f'{self.target}: Skipping file {filename}, does not match extension filters')
             return False
-
 
     def message_parent(self, message_type, content=''):
         '''
@@ -416,13 +399,11 @@ class Spiderling:
             SpiderlingMessage(message_type, self.target, content)
         )
 
-
     def parse_local_files(self, files):
 
         with ProcessPool(self.parent.threads) as pool:
             for r in pool.map(self.parse_file, files):
                 pass
-
 
     def save_file(self, remote_file):
         '''
@@ -441,7 +422,6 @@ class Spiderling:
         except Exception:
             log.warning(f'Error saving {remote_file}')
 
-
     def get_file(self, remote_file):
         '''
         Attempts to retrieve "remote_file" from share and returns True if successful
@@ -456,4 +436,3 @@ class Spiderling:
             log.debug(f'{self.target}: {e}')
 
         return False
-

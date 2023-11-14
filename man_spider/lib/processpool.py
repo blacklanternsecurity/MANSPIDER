@@ -1,13 +1,11 @@
+import contextlib
 import logging
-import traceback
-from time import sleep
 import multiprocessing as mp
-from queue import Empty, Full
-
+from queue import Empty
+from time import sleep
 
 # set up logging
 log = logging.getLogger('manspider.processpool')
-
 
 
 class ProcessPool:
@@ -20,7 +18,7 @@ class ProcessPool:
 
     def __init__(self, processes=None, daemon=False, name=''):
 
-        self.name = f'ProcessPool'
+        self.name = 'ProcessPool'
         if name:
             self.name += f'-{name}'
 
@@ -38,9 +36,10 @@ class ProcessPool:
         # make the result queue
         self.result_queue = mp.Manager().Queue()
 
+    def map(self, func, iterable, args=(), kwargs=None):
 
-    def map(self, func, iterable, args=(), kwargs={}):
-
+        if kwargs is None:
+            kwargs = {}
         # loop until we're out of work
         for entry in iterable:
 
@@ -48,24 +47,21 @@ class ProcessPool:
 
                 while 1:
 
-                    for result in self.results:
-                        yield result
-
+                    yield from self.results
                     # start processes
                     for i in range(len(self.pool)):
                         process = self.pool[i]
                         if process is None or not process.is_alive():
-                            self.pool[i] = mp.Process(target=self.execute, args=(func, self.result_queue, (entry,)+args), \
-                                kwargs=kwargs, daemon=self.daemon)
+                            self.pool[i] = mp.Process(target=self.execute,
+                                                      args=(func, self.result_queue, (entry,) + args), \
+                                                      kwargs=kwargs, daemon=self.daemon)
                             self.pool[i].start()
                             self.started_counter += 1
                             log.debug(f'{self.name}: {self.started_counter:,} processes started')
                             # success, move on to next
                             assert False
 
-                        for result in self.results:
-                            yield result
-
+                        yield from self.results
                     # prevent unnecessary CPU usage
                     sleep(.1)
 
@@ -83,9 +79,7 @@ class ProcessPool:
                 log.debug(f'{self.name}: Waiting for {finished_threads.count(False):,} threads to finish')
                 sleep(1)
 
-        for result in self.results:
-            yield result
-
+        yield from self.results
 
     @property
     def results(self):
@@ -100,13 +94,14 @@ class ProcessPool:
                 sleep(.1)
                 break
 
-
     @staticmethod
-    def execute(func, result_queue, args=(), kwargs={}):
+    def execute(func, result_queue, args=(), kwargs=None):
         '''
         Executes given function and places return value in result queue
         '''
 
+        if kwargs is None:
+            kwargs = {}
         try:
             result_queue.put(func(*args, **kwargs))
         except Exception as e:
@@ -114,7 +109,6 @@ class ProcessPool:
                 log.critical(format_exc())
         except KeyboardInterrupt as e:
             log.critical('ProcessPool Interrupted')
-
 
     @staticmethod
     def _close_queue(q):
@@ -126,15 +120,11 @@ class ProcessPool:
                 break
         q.close()
 
-
     def __enter__(self):
 
         return self
 
-
     def __exit__(self, exception_type, exception_value, traceback):
 
-        try:
+        with contextlib.suppress(Exception):
             self._close_queue(self.result_queue)
-        except Exception:
-            pass
