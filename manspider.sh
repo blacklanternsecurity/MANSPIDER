@@ -1,0 +1,1 @@
+docker run -v ./loot:/root/.manspider/loot -v ./logs:/root/.manspider/logs blacklanternsecurity/manspider "$@"
