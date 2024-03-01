@@ -1,3 +1,5 @@
+import string
+import random
 import ntpath
 import struct
 import logging
@@ -37,8 +39,9 @@ class SMBClient:
             resp = self.conn.listShares()
             for i in range(len(resp)):
                 sharename = resp[i]['shi1_netname'][:-1]
+                remark = resp[i]['shi1_remark'][:-1]
                 log.debug(f'{self.server}: Found share: {sharename}')
-                yield sharename
+                yield (sharename, remark)
             
         except Exception as e:
             e = handle_impacket_error(e, self)
@@ -139,7 +142,19 @@ class SMBClient:
             e = handle_impacket_error(e, self)
             raise FileListError(f'{e.args}: Error listing files at "{share}{nt_path}"')
 
-
+    def check_write_access(self, share):
+        '''
+        Check is the share is writeable by creating and deleting a random directory
+        '''
+        temp_dir = ntpath.normpath("\\" + ''.join(random.sample(string.ascii_letters, 10)))
+        try:
+            self.conn.createDirectory(share, temp_dir)
+            self.conn.deleteDirectory(share, temp_dir)
+            log.info(f'{self.server}: {share}: is writeable!')
+            return True
+        except SessionError as e:#
+            raise e
+            return False
 
     def rebuild(self, error=''):
         '''
