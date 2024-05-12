@@ -51,7 +51,8 @@ class MANSPIDER:
             log.info(f'Searching by file extension: {extensions_str}')
 
         self.init_filename_filters(options.filenames)
-        self.parser = FileParser(options.content, quiet=self.quiet)
+        #! excluded files will not be parsed (work with both: remote and local manspider mode)
+        self.parser = FileParser(options.content, self.exclude_files, quiet=self.quiet)
 
         self.failed_logons = 0
 
@@ -88,7 +89,7 @@ class MANSPIDER:
                         if process is None or not process.is_alive():
                             # start spiderling
                             self.spiderling_pool[i] = multiprocessing.Process(
-                                target=Spiderling, args=(target, self.exclude_files, self), daemon=False
+                                target=Spiderling, args=(target, self), daemon=False
                             )
                             self.spiderling_pool[i].start()
                             # success, break out of infinite loop
