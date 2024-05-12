@@ -53,12 +53,16 @@ class Spiderling:
         '.xz',
     ]
 
-    def __init__(self, target, parent):
+    def __init__(self, target, files_toskip, parent):
 
         try:
 
             self.parent = parent
             self.target = target
+
+            #! Files to skip from parsing (excluded files)
+            self.files_toskip = files_toskip
+
 
             # unless we're only searching local files, connect to target
             if type(self.target) == pathlib.PosixPath:
@@ -115,6 +119,11 @@ class Spiderling:
             # remote files
             for file in self.files:
 
+                #! Skip parsing for excluded files
+                if str(file).split("\\")[-1] in  self.files_toskip:
+                    log.debug(f"{self.target}: Skipping {str(file)}: match filenames to skip filters")
+                    continue
+
                 # if content searching is enabled, parse the file
                 if self.parent.parser.content_filters:
                     try:
@@ -169,8 +178,7 @@ class Spiderling:
         For sole purpose of threading
         '''
 
-        try:
-
+        try:        
             if type(file) == RemoteFile:
                 matches = self.parent.parser.parse_file(str(file.tmp_filename), pretty_filename=str(file))
                 if matches and not self.parent.no_download:

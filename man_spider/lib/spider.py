@@ -41,6 +41,10 @@ class MANSPIDER:
         self.or_logic           = options.or_logic
 
         self.extension_blacklist= options.exclude_extensions
+        
+        #! List of files to exclude from parsing
+        self.exclude_files = options.exclude_files
+
         self.file_extensions    = options.extensions
         if self.file_extensions:
             extensions_str = '"' + '", "'.join(list(self.file_extensions)) + '"'
@@ -84,7 +88,7 @@ class MANSPIDER:
                         if process is None or not process.is_alive():
                             # start spiderling
                             self.spiderling_pool[i] = multiprocessing.Process(
-                                target=Spiderling, args=(target, self), daemon=False
+                                target=Spiderling, args=(target, self.exclude_files, self), daemon=False
                             )
                             self.spiderling_pool[i].start()
                             # success, break out of infinite loop

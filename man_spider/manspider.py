@@ -90,6 +90,8 @@ def main():
     parser.add_argument('-f', '--filenames', nargs='+', default=[],         help=f'filter filenames using regex (space-separated)', metavar='REGEX')
     parser.add_argument('-e', '--extensions',nargs='+', default=[],         help='only show filenames with these extensions (space-separated, e.g. `docx xlsx` for only word & excel docs)', metavar='EXT')
     parser.add_argument('--exclude-extensions',nargs='+', default=[],       help='ignore files with these extensions', metavar='EXT')
+    # Argparser option to enter a list of excluded files from parsing
+    parser.add_argument('--exclude-files',nargs='+', default=[],       help='dont parse files with these names (space-separated, e.g. `office.exe junk.bin` to skip parsing for office.exe & junk.data)', metavar='EXCLUDEDFILES')
     parser.add_argument('-c', '--content',   nargs='+', default=[],         help='search for file content using regex (multiple supported)', metavar='REGEX')
     parser.add_argument('--sharenames',      nargs='+', default=[],         help='only search shares with these names (multiple supported)', metavar='SHARE')
     parser.add_argument('--exclude-sharenames', nargs='*', default=['IPC$', 'C$', 'ADMIN$', 'PRINT$'],help='don\'t search shares with these names (multiple supported)', metavar='SHARE')
