@@ -133,18 +133,19 @@ For example, you could specify any or all of these:
 
 ## Usage:
 ~~~
-usage: manspider [-h] [-u USERNAME] [-p PASSWORD] [-d DOMAIN] [-m MAXDEPTH] [-H HASH] [-t THREADS] [-f REGEX [REGEX ...]] [-e EXT [EXT ...]] [--exclude-extensions EXT [EXT ...]]
-                 [-c REGEX [REGEX ...]] [--sharenames SHARE [SHARE ...]] [--exclude-sharenames [SHARE ...]] [--dirnames DIR [DIR ...]] [--exclude-dirnames DIR [DIR ...]] [-q] [-n]
-                 [-mfail INT] [-o] [-s SIZE] [-v]
+usage: manspider [-h] [-u USERNAME] [-p PASSWORD] [-d DOMAIN] [-l LOOT_DIR] [-m MAXDEPTH] [-H HASH] [-t THREADS] [-f REGEX [REGEX ...]]
+                 [-e EXT [EXT ...]] [--exclude-extensions EXT [EXT ...]] [--exclude-files EXCLUDEDFILES [EXCLUDEDFILES ...]]
+                 [-c REGEX [REGEX ...]] [--sharenames SHARE [SHARE ...]] [--exclude-sharenames [SHARE ...]] [--dirnames DIR [DIR ...]]
+                 [--exclude-dirnames DIR [DIR ...]] [-q] [-n] [-mfail INT] [-o] [-s SIZE] [-v]
                  targets [targets ...]
 
 Scan for juicy data on SMB shares. Matching files and logs are stored in $HOME/.manspider. All filters are case-insensitive.
 
 positional arguments:
-  targets               IPs, Hostnames, CIDR ranges, or files containing targets to spider (NOTE: local searching also supported, specify directory name or keyword "loot" to search
-                        downloaded files)
+  targets               IPs, Hostnames, CIDR ranges, or files containing targets to spider (NOTE: local searching also supported, specify
+                        directory name or keyword "loot" to search downloaded files)
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -u USERNAME, --username USERNAME
                         username for authentication
@@ -152,6 +153,8 @@ optional arguments:
                         password for authentication
   -d DOMAIN, --domain DOMAIN
                         domain for authentication
+  -l LOOT_DIR, --loot-dir LOOT_DIR
+                        loot directory (default ~/.manspider/)
   -m MAXDEPTH, --maxdepth MAXDEPTH
                         maximum depth to spider (default: 10)
   -H HASH, --hash HASH  NTLM hash for authentication
@@ -163,6 +166,8 @@ optional arguments:
                         only show filenames with these extensions (space-separated, e.g. `docx xlsx` for only word & excel docs)
   --exclude-extensions EXT [EXT ...]
                         ignore files with these extensions
+  --exclude-files EXCLUDEDFILES [EXCLUDEDFILES ...]
+                        dont parse files with these names (space-separated, e.g. `office.exe junk.bin` to skip parsing for office.exe & junk.data)
   -c REGEX [REGEX ...], --content REGEX [REGEX ...]
                         search for file content using regex (multiple supported)
   --sharenames SHARE [SHARE ...]
@@ -181,4 +186,19 @@ optional arguments:
   -s SIZE, --max-filesize SIZE
                         don't retrieve files over this size, e.g. "500K" or ".5M" (default: 10M)
   -v, --verbose         show debugging messages
+
+
+    # EXAMPLES
+
+    Example 1: Search the network for filenames that may contain creds
+    $ manspider 192.168.0.0/24 -f passw user admin account network login logon cred -d evilcorp -u bob -p Passw0rd
+
+    Example 2: Search for XLSX files containing "password"
+    $ manspider share.evilcorp.local -c password -e xlsx -d evilcorp -u bob -p Passw0rd
+
+    Example 3: Search for interesting file extensions
+    $ manspider share.evilcorp.local -e bat com vbs ps1 psd1 psm1 pem key rsa pub reg txt cfg conf config -d evilcorp -u bob -p Passw0rd
+
+    Example 4: Search for finance-related files
+    $ manspider share.evilcorp.local --dirnames bank financ payable payment reconcil remit voucher vendor eft swift -f '[0-9]{5,}' -d evilcorp -u bob -p Passw0rd
 ~~~
