@@ -60,7 +60,7 @@ $ manspider share.evilcorp.local -c passw -e xlsx csv docx pdf -d evilcorp -u bo
 
 ### Example #4: Search for interesting file extensions
 ~~~
-$ manspider share.evilcorp.local -e bat com vbs ps1 psd1 psm1 pem key rsa pub reg pfx cfg conf config -d evilcorp -u bob -p Passw0rd
+$ manspider share.evilcorp.local -e bat com vbs ps1 psd1 psm1 pem key rsa pub reg pfx cfg conf config vmdk vhd vdi dit -d evilcorp -u bob -p Passw0rd
 ~~~
 
 ### Example #5: Search for finance-related files
