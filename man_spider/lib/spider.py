@@ -35,6 +35,7 @@ class MANSPIDER:
         self.dir_blacklist      = options.exclude_dirnames
 
         self.no_download        = options.no_download
+        self.check_write_access = options.check_write
 
         # applies "or" logic instead of "and"
         # e.g. file is downloaded if filename OR extension OR content match
@@ -72,6 +73,16 @@ class MANSPIDER:
 
         if not options.no_download:
             log.info(f'Matching files will be downloaded to {self.loot_dir}')
+
+        # file tree option and the directory to store its results
+        self.file_tree          = options.file_tree
+        if options.file_tree_dir:
+            self.file_tree_dir=Path(options.file_tree_dir)
+        else:
+            self.file_tree_dir = Path.home() / '.manspider' / 'file_tree'
+        if self.file_tree:
+            log.info(f'Generating file trees of spidered shares in {self.file_tree_dir}')
+            self.file_tree_dir.mkdir(parents=True, exist_ok=True)
 
 
     def start(self):

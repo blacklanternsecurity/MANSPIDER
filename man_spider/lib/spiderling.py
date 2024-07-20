@@ -1,6 +1,8 @@
 import string
 import logging
 import pathlib
+import time
+import json
 from .smb import *
 from .file import *
 from .util import *
@@ -114,7 +116,7 @@ class Spiderling:
         else:
             # remote files
             for file in self.files:
-
+                
                 # if content searching is enabled, parse the file
                 if self.parent.parser.content_filters:
                     try:
@@ -129,7 +131,10 @@ class Spiderling:
                     log.info(f'{self.target}: {file.share}\\{file.name} ({bytes_to_human(file.size)})')
                     if not self.parent.no_download:
                         self.save_file(file)
-
+        
+        if self.parent.file_tree:
+            self.save_file_tree()
+            
         log.info(f'Finished spidering {self.target}')
 
 
@@ -155,11 +160,21 @@ class Spiderling:
                     log.debug(f'Skipping {file}: does not match filename/extension filters')
 
         else:
-            for share in self.shares:
-                for remote_file in self.list_files(share):
+            self.file_tree = {self.target: {}}
+            for share_name, share_remark in self.shares:
+                file_tree_share_node = None
+                if self.parent.check_write_access:
+                    is_write_access = self.smb_client.check_write_access(share_name) 
+                    share_permission = ('read', 'write') if is_write_access else ('read',)
+                else:
+                    share_permission = ('read', '?')
+                if self.parent.file_tree:
+                    file_tree_share_node = self.file_tree[self.target][share_name] = {"_meta": {"remark": share_remark, "permission": share_permission}}
+                for remote_file in self.list_files(share_name, file_tree_node=file_tree_share_node):
                     if not self.parent.no_download or self.parent.parser.content_filters:
                         self.get_file(remote_file)
                     yield remote_file
+
 
 
 
@@ -199,20 +214,16 @@ class Spiderling:
         Lists all shares on single target
         '''
 
-        for share in self.smb_client.shares:
-            if self.share_match(share):
-                yield share
+        for share_name, share_remarks in self.smb_client.shares:
+            if self.share_match(share_name):
+                yield (share_name, share_remarks)
 
-
-
-    def list_files(self, share, path='', depth=0, tries=2):
+    def list_files(self, share, path='', depth=0, tries=2, file_tree_node=None):
         '''
         List files inside a specific directory
         Only yield files which conform to all filters (except content)
         '''
-
         if depth < self.parent.maxdepth and self.dir_match(path):
-
             files = []
             while tries > 0:
                 try:
@@ -224,20 +235,24 @@ class Spiderling:
                         break
                     else:
                         tries -= 1
-
+            
             if files:
                 log.debug(f'{self.target}: {share}{path}: contains {len(files):,} items')
 
             for f in files:
                 name = f.get_longname()
                 full_path = f'{path}\\{name}'
+                
+                if file_tree_node is not None:
+                    file_tree_node[name] = {"_meta": {"size": f.get_filesize(), "created_at": time.ctime(float(f.get_ctime_epoch())), "modified_at": time.ctime(float(f.get_mtime_epoch())), "looted": False}}
+
                 # if it's a directory, go deeper
                 if f.is_directory():
-                    for file in self.list_files(share, full_path, (depth+1)):
+                    file_tree_node[name]["_meta"]["smbclient_cmd"] = self.get_smbclient_command(share, f'{path}/{name}')
+                    for file in self.list_files(share, full_path, (depth+1), file_tree_node=file_tree_node[name] if file_tree_node is not None else None):
                         yield file
 
                 else:
-
                     # skip the file if it didn't match extension filters
                     if self.extension_blacklisted(name):
                         log.debug(f'{self.target}: Skipping {share}{full_path}: extension is blacklisted')
@@ -265,7 +280,7 @@ class Spiderling:
 
                     # make the RemoteFile object (the file won't be read yet)
                     full_path_fixed = full_path.lstrip('\\')
-                    remote_file = RemoteFile(full_path_fixed, share, self.target, size=filesize)
+                    remote_file = RemoteFile(full_path_fixed, share, self.target, size=filesize, file_tree_node=file_tree_node[name] if file_tree_node is not None else None)
 
                     # if it's a non-empty file that's smaller than the size limit
                     if filesize > 0 and filesize < self.parent.max_filesize:
@@ -285,6 +300,9 @@ class Spiderling:
 
                     else:
                         log.debug(f'{self.target}: {full_path} is either empty or too large')
+        else:
+            if file_tree_node is not None:            
+                file_tree_node["[...]"] = None
 
 
     def path_match(self, file):
@@ -440,6 +458,8 @@ class Spiderling:
             move(str(remote_file.tmp_filename), str(loot_dest))
         except Exception:
             log.warning(f'Error saving {remote_file}')
+        if remote_file.file_tree_node is not None:
+            remote_file.file_tree_node['_meta']['looted'] = True
 
 
     def get_file(self, remote_file):
@@ -456,4 +476,61 @@ class Spiderling:
             log.debug(f'{self.target}: {e}')
 
         return False
+
+
+    def get_smbclient_command(self, share, path):
+        '''
+        Get the command to access a given path using the smbclient for further inspection
+        '''
+        parts = [f"smbclient"]
+        
+        if self.smb_client.domain and self.smb_client.username:
+            parts.append(f"-U '{self.smb_client.domain}/{self.smb_client.username}'")
+        elif self.smb_client.username:
+            parts.append(f"-U '{self.smb_client.username}'")
+        if self.smb_client.username not in ('Guest', ''):
+            parts.append(f"--password={self.smb_client.password or self.smb_client.nthash}")
+        if not self.smb_client.password and self.smb_client.nthash:
+            parts.append("--pw-nt-hash")
+        parts.append(f"-D '{path}' '//{self.target}/{share}/'")
+        return ' '.join(parts)
+
+    def save_file_tree(self):
+        ''' 
+        Generate and save the file tree for this spiderling
+        '''
+        file_tree_path = self.parent.file_tree_dir / f"{self.target}.json"  
+        with open(file_tree_path, "w") as file_tree_json_file:
+            json.dump(self.file_tree, file_tree_json_file)
+
+        def write_node(node, level=0):
+            for key,value in node.items():
+                if key == '_meta':
+                    continue
+                parts = ['  ' *level, key]
+                try:
+                    if len(value["_meta"]["remark"]) > 0:
+                        parts.append(f" - {value['_meta']['remark']}")
+                except:
+                    pass
+                try:
+                    if "write" in value["_meta"]["permission"]:
+                        parts.append(" - [WRITE]")
+                except:
+                    pass
+                try:
+                    if value["_meta"]["looted"]:
+                        parts.append(" - [LOOTED]")
+                except:
+                    pass
+                parts.append("\n")
+                file_tree_txt_file.write(''.join(parts))
+                if isinstance(value, dict):
+                    write_node(value, level+1)
+
+        file_tree_path = self.parent.file_tree_dir / f"{self.target}.txt"  
+        with open(file_tree_path, "w") as file_tree_txt_file:
+            write_node(self.file_tree)
+
+
 
