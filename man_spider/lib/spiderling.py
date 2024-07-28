@@ -60,6 +60,7 @@ class Spiderling:
             self.parent = parent
             self.target = target
 
+
             # unless we're only searching local files, connect to target
             if type(self.target) == pathlib.PosixPath:
                 self.local = True
@@ -169,8 +170,7 @@ class Spiderling:
         For sole purpose of threading
         '''
 
-        try:
-
+        try:        
             if type(file) == RemoteFile:
                 matches = self.parent.parser.parse_file(str(file.tmp_filename), pretty_filename=str(file))
                 if matches and not self.parent.no_download:

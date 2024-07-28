@@ -41,13 +41,18 @@ class MANSPIDER:
         self.or_logic           = options.or_logic
 
         self.extension_blacklist= options.exclude_extensions
+        
+        #! List of files to exclude from parsing
+        self.exclude_files = options.exclude_files
+
         self.file_extensions    = options.extensions
         if self.file_extensions:
             extensions_str = '"' + '", "'.join(list(self.file_extensions)) + '"'
             log.info(f'Searching by file extension: {extensions_str}')
 
         self.init_filename_filters(options.filenames)
-        self.parser = FileParser(options.content, quiet=self.quiet)
+        #! excluded files will not be parsed (work with both: remote and local manspider mode)
+        self.parser = FileParser(options.content, self.exclude_files, quiet=self.quiet)
 
         self.failed_logons = 0
 

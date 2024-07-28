@@ -6,6 +6,7 @@ from ..util import *
 from ..logger import *
 import subprocess as sp
 from ..logger import ColoredFormatter
+from pathlib import PosixPath
 
 log = logging.getLogger('manspider.parser')
 
@@ -38,9 +39,12 @@ class FileParser:
     ]
 
 
-    def __init__(self, filters, quiet=False):
+    def __init__(self, filters, files_toskip, quiet=False):
 
         self.init_content_filters(filters)
+        #! list of files to skip from parsing
+        self.files_toskip = files_toskip
+
         self.quiet = quiet
 
 
@@ -126,23 +130,37 @@ class FileParser:
 
         if pretty_filename is None:
             pretty_filename = str(file)
+        
+        #! We are in remote mode
+        if type(pretty_filename) == str:
+            filename_tocheck = str(pretty_filename).split("\\")[-1]
+        #! We are in local mode
+        elif type(pretty_filename) == PosixPath:
+            filename_tocheck = pretty_filename.name
 
-        log.debug(f'Parsing file: {pretty_filename}')
+        #! Skip the file if it's excluded from the parsing (with option: (--exclude-files ...))
+        if filename_tocheck in  self.files_toskip:
+            log.debug(f"Skipping {str(pretty_filename)}: one of the filenames to skip")
+            return None
+        
+        else:
+            #! Parse the file
+            log.debug(f'Parsing file: {pretty_filename}')
 
-        matches = dict()
+            matches = dict()
 
-        try:
+            try:
 
-            matches = self.textract(file, pretty_filename=pretty_filename)
+                matches = self.textract(file, pretty_filename=pretty_filename)
 
-        except Exception as e:
-            #except (BadZipFile, textract.exceptions.CommandLineError) as e:
-            if log.level <= logging.DEBUG:
-                log.warning(f'Error extracting text from {pretty_filename}: {e}')
-            else:
-                log.warning(f'Error extracting text from {pretty_filename} (-v to debug)')
-            
-        return matches
+            except Exception as e:
+                #except (BadZipFile, textract.exceptions.CommandLineError) as e:
+                if log.level <= logging.DEBUG:
+                    log.warning(f'Error extracting text from {pretty_filename}: {e}')
+                else:
+                    log.warning(f'Error extracting text from {pretty_filename} (-v to debug)')
+                
+            return matches
 
 
     def textract(self, file, pretty_filename):
