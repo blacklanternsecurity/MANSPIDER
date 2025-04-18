@@ -1,6 +1,9 @@
 # MANSPIDER
 ### Crawl SMB shares for juicy information. File content searching + regex is supported!
 
+### UPDATE 2025-04-18
+**Updated package versions to support up to Python 3.13 and switched [textract](https://github.com/deanmalmgren/textract) against [textract-py3]([textract](https://github.com/deanmalmgren/textract)) to allow installing via pipx again. Not thoroughly tested though.**
+
 ### UPDATE 2023-10-15
 **[textract](https://github.com/deanmalmgren/textract), one of manspider's upstream dependencies, is no longer being updated. For this reason, you may run into problems when installing with pip. The recommended installation method is now [Docker](https://hub.docker.com/r/blacklanternsecurity/manspider):**
 
