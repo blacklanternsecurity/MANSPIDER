@@ -74,6 +74,9 @@ class Spiderling:
                     parent.password,
                     parent.domain,
                     parent.nthash,
+                    parent.use_kerberos,
+                    parent.dc_ip,
+                    parent.no_pass,
                 )
 
                 logon_result = self.smb_client.login()
