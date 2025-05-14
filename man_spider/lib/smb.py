@@ -78,8 +78,8 @@ class SMBClient:
 
                 if self.use_kerberos:
                     try:
-                        log.info(f'Starting Kerberos authentication for {self.domain}\\{self.username}')
-                        log.info('Getting new TGT with password authentication')
+                        log.debug(f'Starting Kerberos authentication for {self.domain}\\{self.username}')
+                        log.debug('Getting new TGT with password authentication')
                         try:
                             # Create Principal object for Kerberos authentication
                             if '@' not in self.username:
