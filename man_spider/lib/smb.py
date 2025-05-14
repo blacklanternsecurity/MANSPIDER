@@ -78,37 +78,24 @@ class SMBClient:
 
                 if self.use_kerberos:
                     try:
-                        log.debug(f'Starting Kerberos authentication for {self.domain}\\{self.username}')
-                        if self.no_pass:
-                            # Use ccache file from KRB5CCNAME environment variable
-                            if 'KRB5CCNAME' not in os.environ:
-                                log.error('KRB5CCNAME environment variable not set')
-                                return False
+                        log.info(f'Starting Kerberos authentication for {self.domain}\\{self.username}')
+                        log.info('Getting new TGT with password authentication')
+                        try:
+                            # Format username properly for Kerberos
+                            if '@' not in self.username:
+                                username = f'{self.username}@{self.domain}'
+                            else:
+                                username = self.username
                             
-                            log.debug('Using ccache file for authentication')
-                            ccache = CCache.loadFile(os.environ['KRB5CCNAME'])
-                            principal = Principal(self.username, type=1, realm=self.domain)
-                            self.tgt = ccache.getCredential(principal)
-                            if self.tgt is None:
-                                log.error(f'No valid credentials found in ccache for {self.username}@{self.domain}')
-                                return False
-                            
-                            log.debug('Successfully loaded TGT from ccache')
-                        else:
-                            log.debug('Getting new TGT with password authentication')
-                            # Get TGT
-                            self.tgt = getKerberosTGT(self.username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
-                            log.debug('Successfully obtained TGT')
-                        
-                        # Get TGS for SMB
-                        log.debug(f'Getting TGS for {self.server}@{self.domain}')
-                        self.tgs = getKerberosTGS(self.tgt, self.server, self.domain, kdcHost=self.dc_ip)
-                        log.debug('Successfully obtained TGS')
-                        
-                        # Login with Kerberos
-                        log.debug('Attempting Kerberos login with SMB')
-                        self.conn.kerberosLogin(self.username, '', self.domain, tgs=self.tgs)
-                        log.debug('Kerberos login successful')
+                            self.tgt = getKerberosTGT(username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
+                            self.conn.kerberosLogin(username, self.password, self.domain, self.tgt, kdcHost=self.dc_ip, useCache=False)
+                            log.info(f'Successfully authenticated to {self.server} using Kerberos')
+                            return True
+                        except Exception as e:
+                            log.error(f'Kerberos authentication failed: {str(e)}')
+                            if log.level <= logging.DEBUG:
+                                log.error(f'Full error details: {traceback.format_exc()}')
+                            return False
                     except Exception as e:
                         log.error(f'Kerberos authentication failed: {str(e)}')
                         if log.level <= logging.DEBUG:
