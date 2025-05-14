@@ -94,7 +94,7 @@ class SMBClient:
                             self.conn.kerberosLogin(self.username, '', self.domain, tgs=tgs)
                         else:
                             # Get TGT
-                            tgt = getKerberosTGT(self.username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=self.lmhash, nthash=self.nthash)
+                            tgt = getKerberosTGT(self.username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
                             # Get TGS for SMB
                             tgs = getKerberosTGS(tgt, self.server, self.domain, kdcHost=self.dc_ip)
                             # Login with Kerberos
