@@ -8,6 +8,7 @@ from impacket.smbconnection import SessionError, SMBConnection
 from impacket.krb5.ccache import CCache
 from impacket.krb5.kerberosv5 import getKerberosTGT, getKerberosTGS
 from impacket.krb5.types import Principal
+import traceback
 
 # set up logging
 log = logging.getLogger('manspider.smb')
@@ -77,12 +78,14 @@ class SMBClient:
 
                 if self.use_kerberos:
                     try:
+                        log.debug(f'Starting Kerberos authentication for {self.domain}\\{self.username}')
                         if self.no_pass:
                             # Use ccache file from KRB5CCNAME environment variable
                             if 'KRB5CCNAME' not in os.environ:
                                 log.error('KRB5CCNAME environment variable not set')
                                 return False
                             
+                            log.debug('Using ccache file for authentication')
                             ccache = CCache.loadFile(os.environ['KRB5CCNAME'])
                             principal = Principal(self.username, type=1, realm=self.domain)
                             self.tgt = ccache.getCredential(principal)
@@ -90,19 +93,26 @@ class SMBClient:
                                 log.error(f'No valid credentials found in ccache for {self.username}@{self.domain}')
                                 return False
                             
-                            # Get TGS for SMB
-                            self.tgs = getKerberosTGS(self.tgt, self.server, self.domain, kdcHost=self.dc_ip)
-                            # Login with Kerberos
-                            self.conn.kerberosLogin(self.username, '', self.domain, tgs=self.tgs)
+                            log.debug('Successfully loaded TGT from ccache')
                         else:
+                            log.debug('Getting new TGT with password authentication')
                             # Get TGT
                             self.tgt = getKerberosTGT(self.username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
-                            # Get TGS for SMB
-                            self.tgs = getKerberosTGS(self.tgt, self.server, self.domain, kdcHost=self.dc_ip)
-                            # Login with Kerberos
-                            self.conn.kerberosLogin(self.username, '', self.domain, tgs=self.tgs)
+                            log.debug('Successfully obtained TGT')
+                        
+                        # Get TGS for SMB
+                        log.debug(f'Getting TGS for {self.server}@{self.domain}')
+                        self.tgs = getKerberosTGS(self.tgt, self.server, self.domain, kdcHost=self.dc_ip)
+                        log.debug('Successfully obtained TGS')
+                        
+                        # Login with Kerberos
+                        log.debug('Attempting Kerberos login with SMB')
+                        self.conn.kerberosLogin(self.username, '', self.domain, tgs=self.tgs)
+                        log.debug('Kerberos login successful')
                     except Exception as e:
                         log.error(f'Kerberos authentication failed: {str(e)}')
+                        if log.level <= logging.DEBUG:
+                            log.error(f'Full error details: {traceback.format_exc()}')
                         return False
                 else:
                     # pass the hash if requested
@@ -183,8 +193,10 @@ class SMBClient:
         log.debug(f'Rebuilding connection to {self.server} after error: {error}')
         if self.use_kerberos:
             try:
+                log.debug('Creating new SMB connection for Kerberos rebuild')
                 self.conn = SMBConnection(self.server, self.server, sess_port=445, timeout=20)
                 if self.no_pass:
+                    log.debug('Using ccache file for Kerberos rebuild')
                     # Use ccache file from KRB5CCNAME environment variable
                     if 'KRB5CCNAME' not in os.environ:
                         log.error('KRB5CCNAME environment variable not set')
@@ -196,17 +208,27 @@ class SMBClient:
                     if self.tgt is None:
                         log.error(f'No valid credentials found in ccache for {self.username}@{self.domain}')
                         return
+                    log.debug('Successfully loaded TGT from ccache for rebuild')
                 else:
+                    log.debug('Getting new TGT for Kerberos rebuild')
                     # Get new TGT
                     self.tgt = getKerberosTGT(self.username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
+                    log.debug('Successfully obtained new TGT for rebuild')
                 
                 # Get new TGS for SMB
+                log.debug(f'Getting new TGS for {self.server}@{self.domain} for rebuild')
                 self.tgs = getKerberosTGS(self.tgt, self.server, self.domain, kdcHost=self.dc_ip)
+                log.debug('Successfully obtained new TGS for rebuild')
+                
                 # Login with Kerberos
+                log.debug('Attempting Kerberos login for rebuild')
                 self.conn.kerberosLogin(self.username, '', self.domain, tgs=self.tgs)
+                log.debug('Kerberos rebuild successful')
                 return
             except Exception as e:
                 log.error(f'Failed to rebuild Kerberos connection: {e}')
+                if log.level <= logging.DEBUG:
+                    log.error(f'Full error details: {traceback.format_exc()}')
                 return
         else:
             self.login(refresh=True)
