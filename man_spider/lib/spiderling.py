@@ -451,12 +451,32 @@ class Spiderling:
         '''
 
         try:
+            # Get a fresh SMB client for the download
             smb_client = self.parent.get_smb_client(self.target)
             log.debug(f'{self.target}: Downloading {remote_file.share}\\{remote_file.name}')
+            
+            # Ensure we have a valid Kerberos connection
+            if self.parent.use_kerberos:
+                log.debug(f'{self.target}: Verifying Kerberos connection before download')
+                if not smb_client.conn:
+                    log.debug(f'{self.target}: Rebuilding Kerberos connection before download')
+                    smb_client.rebuild('Pre-download connection check')
+            
             remote_file.get(smb_client)
             return True
         except FileRetrievalError as e:
             log.debug(f'{self.target}: {e}')
+            # If the download failed, try one more time with a fresh connection
+            try:
+                log.debug(f'{self.target}: Retrying download with fresh connection')
+                smb_client = self.parent.get_smb_client(self.target)
+                if self.parent.use_kerberos:
+                    smb_client.rebuild('Retry download connection')
+                remote_file.get(smb_client)
+                return True
+            except FileRetrievalError as e2:
+                log.debug(f'{self.target}: Second download attempt failed: {e2}')
+                return False
 
         return False
 
