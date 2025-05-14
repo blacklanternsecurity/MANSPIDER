@@ -90,11 +90,28 @@ class SMBClient:
                             # Create Principal object with correct parameters for Impacket 0.12.0
                             principal = Principal(username, type=1)
                             
-                            # Get TGT using Principal object
-                            self.tgt = getKerberosTGT(principal, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
+                            # Get TGT using Principal object with explicit encryption types
+                            self.tgt = getKerberosTGT(
+                                principal,
+                                self.password,
+                                self.domain,
+                                kdcHost=self.dc_ip,
+                                lmhash=None,
+                                nthash=None,
+                                aesKey=None,
+                                kdcHost=self.dc_ip,
+                                etype=(23, 17, 18)  # RC4, AES128, AES256
+                            )
                             
-                            # Login with Kerberos
-                            self.conn.kerberosLogin(self.username, self.password, self.domain, self.tgt, kdcHost=self.dc_ip, useCache=False)
+                            # Login with Kerberos using the TGT
+                            self.conn.kerberosLogin(
+                                self.username,
+                                self.password,
+                                self.domain,
+                                self.tgt,
+                                kdcHost=self.dc_ip,
+                                useCache=False
+                            )
                             log.info(f'Successfully authenticated to {self.server} using Kerberos')
                             return True
                         except Exception as e:
