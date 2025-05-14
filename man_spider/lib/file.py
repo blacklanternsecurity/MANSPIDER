@@ -33,17 +33,22 @@ r    '''
         if smb_client is None and self.smb_client is None:
             raise FileRetrievalError('Please specify smb_client')
 
-        #memfile = io.BytesIO()
         with open(str(self.tmp_filename), 'wb') as f:
-
             try:
                 smb_client.conn.getFile(self.share, self.name, f.write)
             except Exception as e:
-                handle_impacket_error(e, smb_client, self.share, self.name)
-                raise FileRetrievalError(f'Error retrieving file "{str(self)}": {str(e)[:150]}')
-
-        # reset cursor back to zero so .read() will return the whole file
-        #memfile.seek(0)
+                e = handle_impacket_error(e, smb_client, self.share, self.name)
+                if 'Error occurs while reading from remote(104)' in str(e):
+                    log.debug(f'Connection reset during file download, attempting to rebuild connection')
+                    smb_client.rebuild(str(e))
+                    # Retry the download once after rebuild
+                    try:
+                        smb_client.conn.getFile(self.share, self.name, f.write)
+                    except Exception as e2:
+                        e2 = handle_impacket_error(e2, smb_client, self.share, self.name)
+                        raise FileRetrievalError(f'Error retrieving file "{str(self)}": {str(e2)[:150]}')
+                else:
+                    raise FileRetrievalError(f'Error retrieving file "{str(self)}": {str(e)[:150]}')
 
 
     def __str__(self):
