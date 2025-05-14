@@ -87,8 +87,8 @@ class SMBClient:
                             else:
                                 username = self.username
                             
-                            # Create Principal object
-                            principal = Principal(username, type=1, realm=self.domain)
+                            # Create Principal object with correct parameters for Impacket 0.12.0
+                            principal = Principal(username, type=1)
                             
                             # Get TGT using Principal object
                             self.tgt = getKerberosTGT(principal, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
