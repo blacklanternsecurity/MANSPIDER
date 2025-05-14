@@ -114,7 +114,7 @@ class SMBClient:
                                     kdcHost=self.dc_ip,
                                     useCache=False
                                 )
-                                log.info(f'Successfully authenticated to {self.server} using Kerberos')
+                                log.debug(f'Successfully authenticated to {self.server} using Kerberos')
                                 return True
                             except Exception as e:
                                 if 'KDC_ERR_ETYPE_NOSUPP' in str(e):
@@ -137,7 +137,7 @@ class SMBClient:
                                         kdcHost=self.dc_ip,
                                         useCache=False
                                     )
-                                    log.info(f'Successfully authenticated to {self.server} using Kerberos (RC4)')
+                                    log.debug(f'Successfully authenticated to {self.server} using Kerberos (RC4)')
                                     return True
                                 else:
                                     raise
