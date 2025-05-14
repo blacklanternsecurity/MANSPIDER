@@ -181,7 +181,19 @@ class SMBClient:
                     yield f
         except Exception as e:
             e = handle_impacket_error(e, self)
-            raise FileListError(f'{e.args}: Error listing files at "{share}{nt_path}"')
+            if 'Error occurs while reading from remote(104)' in str(e):
+                log.debug(f'Connection reset during list operation, attempting to rebuild connection')
+                self.rebuild(str(e))
+                # Retry the operation once after rebuild
+                try:
+                    for f in self.conn.listPath(share, nt_path):
+                        if f.get_longname() not in ['', '.', '..']:
+                            yield f
+                except Exception as e2:
+                    e2 = handle_impacket_error(e2, self)
+                    raise FileListError(f'{e2.args}: Error listing files at "{share}{nt_path}"')
+            else:
+                raise FileListError(f'{e.args}: Error listing files at "{share}{nt_path}"')
 
 
 
@@ -195,9 +207,10 @@ class SMBClient:
             try:
                 log.debug('Creating new SMB connection for Kerberos rebuild')
                 self.conn = SMBConnection(self.server, self.server, sess_port=445, timeout=20)
+                
+                # Always get fresh tickets for rebuild
                 if self.no_pass:
                     log.debug('Using ccache file for Kerberos rebuild')
-                    # Use ccache file from KRB5CCNAME environment variable
                     if 'KRB5CCNAME' not in os.environ:
                         log.error('KRB5CCNAME environment variable not set')
                         return
@@ -211,19 +224,36 @@ class SMBClient:
                     log.debug('Successfully loaded TGT from ccache for rebuild')
                 else:
                     log.debug('Getting new TGT for Kerberos rebuild')
-                    # Get new TGT
-                    self.tgt = getKerberosTGT(self.username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
-                    log.debug('Successfully obtained new TGT for rebuild')
+                    try:
+                        self.tgt = getKerberosTGT(self.username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
+                        log.debug('Successfully obtained new TGT for rebuild')
+                    except Exception as e:
+                        log.error(f'Failed to get TGT: {str(e)}')
+                        if log.level <= logging.DEBUG:
+                            log.error(f'Full error details: {traceback.format_exc()}')
+                        return
                 
                 # Get new TGS for SMB
                 log.debug(f'Getting new TGS for {self.server}@{self.domain} for rebuild')
-                self.tgs = getKerberosTGS(self.tgt, self.server, self.domain, kdcHost=self.dc_ip)
-                log.debug('Successfully obtained new TGS for rebuild')
+                try:
+                    self.tgs = getKerberosTGS(self.tgt, self.server, self.domain, kdcHost=self.dc_ip)
+                    log.debug('Successfully obtained new TGS for rebuild')
+                except Exception as e:
+                    log.error(f'Failed to get TGS: {str(e)}')
+                    if log.level <= logging.DEBUG:
+                        log.error(f'Full error details: {traceback.format_exc()}')
+                    return
                 
                 # Login with Kerberos
                 log.debug('Attempting Kerberos login for rebuild')
-                self.conn.kerberosLogin(self.username, '', self.domain, tgs=self.tgs)
-                log.debug('Kerberos rebuild successful')
+                try:
+                    self.conn.kerberosLogin(self.username, '', self.domain, tgs=self.tgs)
+                    log.debug('Kerberos rebuild successful')
+                except Exception as e:
+                    log.error(f'Failed to login with Kerberos: {str(e)}')
+                    if log.level <= logging.DEBUG:
+                        log.error(f'Full error details: {traceback.format_exc()}')
+                    return
                 return
             except Exception as e:
                 log.error(f'Failed to rebuild Kerberos connection: {e}')
