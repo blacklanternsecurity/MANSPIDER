@@ -1,5 +1,18 @@
-# MAN-SPIDER
+# MANSPIDER
 ### Crawl SMB shares for juicy information. File content searching + regex is supported!
+
+### UPDATE 2023-10-15
+**[textract](https://github.com/deanmalmgren/textract), one of manspider's upstream dependencies, is no longer being updated. For this reason, you may run into problems when installing with pip. The recommended installation method is now [Docker](https://hub.docker.com/r/blacklanternsecurity/manspider):**
+
+```bash
+docker run --rm -v ./manspider:/root/.manspider blacklanternsecurity/manspider --help
+```
+
+Note there is also a helper script `manspider.sh` which will automatically mount volumes for manspider's `loot` and `logs` directories, making it a bit more convenient to run:
+
+```bash
+./manspider.sh --help
+```
 
 ![manspider](https://user-images.githubusercontent.com/20261699/74963251-6a08de80-53df-11ea-88f4-60c39665dfa2.gif)
 
@@ -11,7 +24,7 @@
 - any text-based format
 - and many more!!
 
-### MAN-SPIDER will crawl every share on every target system. If provided creds don't work, it will fall back to "guest", then to a null session.
+### MANSPIDER will crawl every share on every target system. If provided creds don't work, it will fall back to "guest", then to a null session.
 ![manspider](https://user-images.githubusercontent.com/20261699/80316979-f9ab7e80-87ce-11ea-9628-3c22a07e8378.png)
 
 ### Installation:
@@ -35,23 +48,63 @@ NOTE: matching files are automatically downloaded into `$HOME/.manspider/loot`! 
 $ manspider 192.168.0.0/24 -f passw user admin account network login logon cred -d evilcorp -u bob -p Passw0rd
 ~~~
 
-### Example #2: Search for XLSX files containing "password"
+### Example #2: Search for spreadsheets with "password" in the filename
 ~~~
-$ manspider share.evilcorp.local -c password -e xlsx -d evilcorp -u bob -p Passw0rd
-~~~
-
-### Example #3: Search for interesting file extensions
-~~~
-$ manspider share.evilcorp.local -e bat com vbs ps1 psd1 psm1 pem key rsa pub reg txt cfg conf config -d evilcorp -u bob -p Passw0rd
+$ manspider share.evilcorp.local -f passw -e xlsx csv -d evilcorp -u bob -p Passw0rd
 ~~~
 
-### Example #4: Search for finance-related files
+### Example #3: Search for documents containing passwords
+~~~
+$ manspider share.evilcorp.local -c passw -e xlsx csv docx pdf -d evilcorp -u bob -p Passw0rd
+~~~
+
+### Example #4: Search for interesting file extensions
+~~~
+$ manspider share.evilcorp.local -e bat com vbs ps1 psd1 psm1 pem key rsa pub reg pfx cfg conf config vmdk vhd vdi dit -d evilcorp -u bob -p Passw0rd
+~~~
+
+### Example #5: Search for finance-related files
 This example searches financy-sounding directories for filenames containing 5 or more consecutive numbers (e.g. `000202006.EFT`)
 ~~~
 $ manspider share.evilcorp.local --dirnames bank financ payable payment reconcil remit voucher vendor eft swift -f '[0-9]{5,}' -d evilcorp -u bob -p Passw0rd
 ~~~
 
-### Example #5: Search for certificates
+### Example #6: Search for SSH keys by filename
+~~~
+$ manspider share.evilcorp.local -e ppk rsa pem ssh rsa -o -f id_rsa id_dsa id_ed25519 -d evilcorp -u bob -p Passw0rd
+~~~
+
+### Example #7: Search for SSH keys by content
+~~~
+$ manspider share.evilcorp.local -e '' -c 'BEGIN .{1,10} PRIVATE KEY' -d evilcorp -u bob -p Passw0rd
+~~~
+
+### Example #8: Search for password manager files
+~~~bash
+# .kdbx - KeePass Password Database (KeePass, KeePassXC)
+# .kdb - KeePass Classic Database (KeePass 1.x)
+# .1pif - 1Password Interchange Format (1Password)
+# .agilekeychain - Agile Keychain Format (1Password, deprecated)
+# .opvault - OPVault Format (1Password)
+# .lpd - LastPass Data File (LastPass)
+# .dashlane - Dashlane Data File (Dashlane)
+# .psafe3 - Password Safe Database (Password Safe)
+# .enpass - Enpass Password Manager Data File (Enpass)
+# .bwdb - Bitwarden Database (Bitwarden)
+# .msecure - mSecure Password Manager Data File (mSecure)
+# .stickypass - Sticky Password Data File (Sticky Password)
+# .pwm - Password Memory Data File (Password Memory)
+# .rdb - RoboForm Data File (RoboForm)
+# .safe - SafeInCloud Password Manager Data File (SafeInCloud)
+# .zps - Zoho Vault Encrypted Data File (Zoho Vault)
+# .pmvault - SplashID Safe Data File (SplashID Safe)
+# .mywallet - MyWallet Password Manager Data File (MyWallet)
+# .jpass - JPass Password Manager Data File (JPass)
+# .pwmdb - Universal Password Manager Database (Universal Password Manager)
+$ manspider share.evilcorp.local -e kdbx kdb 1pif agilekeychain opvault lpd dashlane psafe3 enpass bwdb msecure stickypass pwm rdb safe zps pmvault mywallet jpass pwmdb -d evilcorp -u bob -p Passw0rd
+~~~
+
+### Example #9: Search for certificates
 ~~~
 $ manspider share.evilcorp.local -e pfx p12 pkcs12 pem key crt cer csr jks keystore key keys der -d evilcorp -u bob -p Passw0rd
 ~~~
