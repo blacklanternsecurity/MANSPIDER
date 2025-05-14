@@ -1,9 +1,13 @@
 import ntpath
 import struct
 import logging
+import os
 from .errors import *
 from impacket.nmb import NetBIOSError, NetBIOSTimeout
 from impacket.smbconnection import SessionError, SMBConnection
+from impacket.krb5.ccache import CCache
+from impacket.krb5.kerberosv5 import getKerberosTGT, getKerberosTGS
+from impacket.krb5.types import Principal
 
 # set up logging
 log = logging.getLogger('manspider.smb')
@@ -14,16 +18,17 @@ class SMBClient:
     Wrapper around impacket's SMBConnection() object
     '''
 
-    def __init__(self, server, username, password, domain, nthash):
-
+    def __init__(self, server, username, password, domain, nthash, use_kerberos=False, dc_ip='', no_pass=False):
         self.server = server
-
         self.conn = None
-
         self.username = username
         self.password = password
         self.domain = domain
         self.nthash = nthash
+        self.use_kerberos = use_kerberos
+        self.dc_ip = dc_ip
+        self.no_pass = no_pass
+        
         if self.nthash:
             self.lmhash = 'aad3b435b51404eeaad3b435b51404ee'
         else:
@@ -62,41 +67,68 @@ class SMBClient:
                 return None
 
             try:
-
                 if self.username in [None, '', 'Guest'] and first_try:
                     # skip to guest / null session
                     assert False
 
                 log.debug(f'{self.server}: Authenticating as "{self.domain}\\{self.username}"')
 
-                # pass the hash if requested
-                if self.nthash and not self.password:
-                    self.conn.login(
-                        self.username,
-                        '',
-                        lmhash=self.lmhash,
-                        nthash=self.nthash,
-                        domain=self.domain,
-                    )
-                # otherwise, normal login
+                if self.use_kerberos:
+                    try:
+                        if self.no_pass:
+                            # Use ccache file from KRB5CCNAME environment variable
+                            if 'KRB5CCNAME' not in os.environ:
+                                log.error('KRB5CCNAME environment variable not set')
+                                return False
+                            
+                            ccache = CCache.loadFile(os.environ['KRB5CCNAME'])
+                            principal = Principal(self.username, type=1, realm=self.domain)
+                            tgt = ccache.getCredential(principal)
+                            if tgt is None:
+                                log.error(f'No valid credentials found in ccache for {self.username}@{self.domain}')
+                                return False
+                            
+                            # Get TGS for SMB
+                            tgs = getKerberosTGS(tgt, self.server, self.domain, kdcHost=self.dc_ip)
+                            # Login with Kerberos
+                            self.conn.kerberosLogin(self.username, '', self.domain, tgs=tgs)
+                        else:
+                            # Get TGT
+                            tgt = getKerberosTGT(self.username, self.password, self.domain, kdcHost=self.dc_ip)
+                            # Get TGS for SMB
+                            tgs = getKerberosTGS(tgt, self.server, self.domain, kdcHost=self.dc_ip)
+                            # Login with Kerberos
+                            self.conn.kerberosLogin(self.username, '', self.domain, tgs=tgs)
+                    except Exception as e:
+                        log.error(f'Kerberos authentication failed: {str(e)}')
+                        return False
                 else:
-                    self.conn.login(
-                        self.username,
-                        self.password,
-                        domain=self.domain,
-                    )
+                    # pass the hash if requested
+                    if self.nthash and not self.password:
+                        self.conn.login(
+                            self.username,
+                            '',
+                            lmhash=self.lmhash,
+                            nthash=self.nthash,
+                            domain=self.domain,
+                        )
+                    # otherwise, normal login
+                    else:
+                        self.conn.login(
+                            self.username,
+                            self.password,
+                            domain=self.domain,
+                        )
 
                 log.info(f'{self.server}: Successful login as "{self.username}"')
                 return True
 
             except Exception as e:
-
                 if type(e) != AssertionError:
                     e = handle_impacket_error(e, self, display=True)
 
                 # try guest account, then null session if logon failed
                 if first_try:
-
                     bad_statuses = ['LOGON_FAIL', 'PASSWORD_EXPIRED', 'LOCKED_OUT', 'SESSION_DELETED']
                     if any([s in str(e) for s in bad_statuses]):
                         for s in bad_statuses:
