@@ -81,14 +81,20 @@ class SMBClient:
                         log.info(f'Starting Kerberos authentication for {self.domain}\\{self.username}')
                         log.info('Getting new TGT with password authentication')
                         try:
-                            # Format username properly for Kerberos
+                            # Create Principal object for Kerberos authentication
                             if '@' not in self.username:
                                 username = f'{self.username}@{self.domain}'
                             else:
                                 username = self.username
                             
-                            self.tgt = getKerberosTGT(username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
-                            self.conn.kerberosLogin(username, self.password, self.domain, self.tgt, kdcHost=self.dc_ip, useCache=False)
+                            # Create Principal object
+                            principal = Principal(username, type=1, realm=self.domain)
+                            
+                            # Get TGT using Principal object
+                            self.tgt = getKerberosTGT(principal, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
+                            
+                            # Login with Kerberos
+                            self.conn.kerberosLogin(self.username, self.password, self.domain, self.tgt, kdcHost=self.dc_ip, useCache=False)
                             log.info(f'Successfully authenticated to {self.server} using Kerberos')
                             return True
                         except Exception as e:
