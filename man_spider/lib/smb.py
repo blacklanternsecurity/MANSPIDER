@@ -87,32 +87,60 @@ class SMBClient:
                             else:
                                 username = self.username
                             
+                            log.debug(f'Creating Principal for {username}')
                             # Create Principal object with correct parameters for Impacket 0.12.0
                             principal = Principal(username, type=1)
                             
-                            # Get TGT using Principal object with explicit encryption types
-                            self.tgt = getKerberosTGT(
-                                principal,
-                                self.password,
-                                self.domain,
-                                kdcHost=self.dc_ip,
-                                lmhash=None,
-                                nthash=None,
-                                aesKey=None,
-                                etype=(23, 17, 18)  # RC4, AES128, AES256
-                            )
-                            
-                            # Login with Kerberos using the TGT
-                            self.conn.kerberosLogin(
-                                self.username,
-                                self.password,
-                                self.domain,
-                                self.tgt,
-                                kdcHost=self.dc_ip,
-                                useCache=False
-                            )
-                            log.info(f'Successfully authenticated to {self.server} using Kerberos')
-                            return True
+                            log.debug(f'Getting TGT for {username}@{self.domain}')
+                            try:
+                                # Get TGT using Principal object with supported parameters
+                                self.tgt = getKerberosTGT(
+                                    principal,
+                                    self.password,
+                                    self.domain,
+                                    lmhash='',
+                                    nthash='',
+                                    aesKey='',
+                                    kdcHost=self.dc_ip
+                                )
+                                
+                                log.debug('TGT obtained, attempting Kerberos login')
+                                # Login with Kerberos using the TGT
+                                self.conn.kerberosLogin(
+                                    self.username,
+                                    self.password,
+                                    self.domain,
+                                    self.tgt,
+                                    kdcHost=self.dc_ip,
+                                    useCache=False
+                                )
+                                log.info(f'Successfully authenticated to {self.server} using Kerberos')
+                                return True
+                            except Exception as e:
+                                if 'KDC_ERR_ETYPE_NOSUPP' in str(e):
+                                    log.debug('AES encryption not supported, retrying with RC4')
+                                    # Retry with RC4 only
+                                    self.tgt = getKerberosTGT(
+                                        principal,
+                                        self.password,
+                                        self.domain,
+                                        lmhash='',
+                                        nthash='',
+                                        aesKey=None,
+                                        kdcHost=self.dc_ip
+                                    )
+                                    self.conn.kerberosLogin(
+                                        self.username,
+                                        self.password,
+                                        self.domain,
+                                        self.tgt,
+                                        kdcHost=self.dc_ip,
+                                        useCache=False
+                                    )
+                                    log.info(f'Successfully authenticated to {self.server} using Kerberos (RC4)')
+                                    return True
+                                else:
+                                    raise
                         except Exception as e:
                             log.error(f'Kerberos authentication failed: {str(e)}')
                             if log.level <= logging.DEBUG:
