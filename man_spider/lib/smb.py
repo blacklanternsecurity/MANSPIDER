@@ -99,7 +99,6 @@ class SMBClient:
                                 lmhash=None,
                                 nthash=None,
                                 aesKey=None,
-                                kdcHost=self.dc_ip,
                                 etype=(23, 17, 18)  # RC4, AES128, AES256
                             )
                             
