@@ -253,7 +253,7 @@ class SMBClient:
                         return
                     
                     ccache = CCache.loadFile(os.environ['KRB5CCNAME'])
-                    principal = Principal(self.username, type=1, realm=self.domain)
+                    principal = Principal(self.username, type=1)
                     self.tgt = ccache.getCredential(principal)
                     if self.tgt is None:
                         log.error(f'No valid credentials found in ccache for {self.username}@{self.domain}')
@@ -262,29 +262,55 @@ class SMBClient:
                 else:
                     log.debug('Getting new TGT for Kerberos rebuild')
                     try:
-                        self.tgt = getKerberosTGT(self.username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
+                        # Create Principal object for rebuild
+                        if '@' not in self.username:
+                            username = f'{self.username}@{self.domain}'
+                        else:
+                            username = self.username
+                        
+                        principal = Principal(username, type=1)
+                        
+                        # Get TGT using Principal object
+                        self.tgt = getKerberosTGT(
+                            principal,
+                            self.password,
+                            self.domain,
+                            lmhash='',
+                            nthash='',
+                            aesKey='',
+                            kdcHost=self.dc_ip
+                        )
                         log.debug('Successfully obtained new TGT for rebuild')
                     except Exception as e:
-                        log.error(f'Failed to get TGT: {str(e)}')
-                        if log.level <= logging.DEBUG:
-                            log.error(f'Full error details: {traceback.format_exc()}')
-                        return
-                
-                # Get new TGS for SMB
-                log.debug(f'Getting new TGS for {self.server}@{self.domain} for rebuild')
-                try:
-                    self.tgs = getKerberosTGS(self.tgt, self.server, self.domain, kdcHost=self.dc_ip)
-                    log.debug('Successfully obtained new TGS for rebuild')
-                except Exception as e:
-                    log.error(f'Failed to get TGS: {str(e)}')
-                    if log.level <= logging.DEBUG:
-                        log.error(f'Full error details: {traceback.format_exc()}')
-                    return
+                        if 'KDC_ERR_ETYPE_NOSUPP' in str(e):
+                            log.debug('AES encryption not supported, retrying with RC4')
+                            self.tgt = getKerberosTGT(
+                                principal,
+                                self.password,
+                                self.domain,
+                                lmhash='',
+                                nthash='',
+                                aesKey=None,
+                                kdcHost=self.dc_ip
+                            )
+                            log.debug('Successfully obtained new TGT for rebuild (RC4)')
+                        else:
+                            log.error(f'Failed to get TGT: {str(e)}')
+                            if log.level <= logging.DEBUG:
+                                log.error(f'Full error details: {traceback.format_exc()}')
+                            return
                 
                 # Login with Kerberos
                 log.debug('Attempting Kerberos login for rebuild')
                 try:
-                    self.conn.kerberosLogin(self.username, '', self.domain, tgs=self.tgs)
+                    self.conn.kerberosLogin(
+                        self.username,
+                        self.password,
+                        self.domain,
+                        self.tgt,
+                        kdcHost=self.dc_ip,
+                        useCache=False
+                    )
                     log.debug('Kerberos rebuild successful')
                 except Exception as e:
                     log.error(f'Failed to login with Kerberos: {str(e)}')
