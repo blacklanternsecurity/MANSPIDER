@@ -28,6 +28,8 @@ class SMBClient:
         self.use_kerberos = use_kerberos
         self.dc_ip = dc_ip
         self.no_pass = no_pass
+        self.tgt = None
+        self.tgs = None
         
         if self.nthash:
             self.lmhash = 'aad3b435b51404eeaad3b435b51404ee'
@@ -83,22 +85,22 @@ class SMBClient:
                             
                             ccache = CCache.loadFile(os.environ['KRB5CCNAME'])
                             principal = Principal(self.username, type=1, realm=self.domain)
-                            tgt = ccache.getCredential(principal)
-                            if tgt is None:
+                            self.tgt = ccache.getCredential(principal)
+                            if self.tgt is None:
                                 log.error(f'No valid credentials found in ccache for {self.username}@{self.domain}')
                                 return False
                             
                             # Get TGS for SMB
-                            tgs = getKerberosTGS(tgt, self.server, self.domain, kdcHost=self.dc_ip)
+                            self.tgs = getKerberosTGS(self.tgt, self.server, self.domain, kdcHost=self.dc_ip)
                             # Login with Kerberos
-                            self.conn.kerberosLogin(self.username, '', self.domain, tgs=tgs)
+                            self.conn.kerberosLogin(self.username, '', self.domain, tgs=self.tgs)
                         else:
                             # Get TGT
-                            tgt = getKerberosTGT(self.username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
+                            self.tgt = getKerberosTGT(self.username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
                             # Get TGS for SMB
-                            tgs = getKerberosTGS(tgt, self.server, self.domain, kdcHost=self.dc_ip)
+                            self.tgs = getKerberosTGS(self.tgt, self.server, self.domain, kdcHost=self.dc_ip)
                             # Login with Kerberos
-                            self.conn.kerberosLogin(self.username, '', self.domain, tgs=tgs)
+                            self.conn.kerberosLogin(self.username, '', self.domain, tgs=self.tgs)
                     except Exception as e:
                         log.error(f'Kerberos authentication failed: {str(e)}')
                         return False
@@ -179,4 +181,32 @@ class SMBClient:
         '''
 
         log.debug(f'Rebuilding connection to {self.server} after error: {error}')
-        self.login(refresh=True)
+        if self.use_kerberos:
+            try:
+                self.conn = SMBConnection(self.server, self.server, sess_port=445, timeout=20)
+                if self.no_pass:
+                    # Use ccache file from KRB5CCNAME environment variable
+                    if 'KRB5CCNAME' not in os.environ:
+                        log.error('KRB5CCNAME environment variable not set')
+                        return
+                    
+                    ccache = CCache.loadFile(os.environ['KRB5CCNAME'])
+                    principal = Principal(self.username, type=1, realm=self.domain)
+                    self.tgt = ccache.getCredential(principal)
+                    if self.tgt is None:
+                        log.error(f'No valid credentials found in ccache for {self.username}@{self.domain}')
+                        return
+                else:
+                    # Get new TGT
+                    self.tgt = getKerberosTGT(self.username, self.password, self.domain, kdcHost=self.dc_ip, lmhash=None, nthash=None)
+                
+                # Get new TGS for SMB
+                self.tgs = getKerberosTGS(self.tgt, self.server, self.domain, kdcHost=self.dc_ip)
+                # Login with Kerberos
+                self.conn.kerberosLogin(self.username, '', self.domain, tgs=self.tgs)
+                return
+            except Exception as e:
+                log.error(f'Failed to rebuild Kerberos connection: {e}')
+                return
+        else:
+            self.login(refresh=True)
