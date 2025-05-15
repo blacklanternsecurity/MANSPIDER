@@ -83,7 +83,7 @@ def main():
     parser.add_argument('-u', '--username',     default='',                 help='username for authentication')
     parser.add_argument('-p', '--password',     default='',                 help='password for authentication')
     parser.add_argument('-d', '--domain',       default='',                 help='domain for authentication')
-    parser.add_argument('-l','--loot-dir',      default='',                 help='loot directory (default ~/.manspider/)')
+    parser.add_argument('-l','--loot-dir',      default='',                 help='loot directory (default ~/.manspider/loot/)')
     parser.add_argument('-m', '--maxdepth',     type=int,   default=10,     help='maximum depth to spider (default: 10)')
     parser.add_argument('-H', '--hash',         default='',                 help='NTLM hash for authentication')
     parser.add_argument('-t', '--threads',      type=int,   default=5,      help='concurrent threads (default: 5)')
@@ -95,6 +95,10 @@ def main():
     parser.add_argument('--exclude-sharenames', nargs='*', default=['IPC$', 'C$', 'ADMIN$', 'PRINT$'],help='don\'t search shares with these names (multiple supported)', metavar='SHARE')
     parser.add_argument('--dirnames',      nargs='+', default=[],           help='only search directories containing these strings (multiple supported)', metavar='DIR')
     parser.add_argument('--exclude-dirnames', nargs='+', default=[],        help='don\'t search directories containing these strings (multiple supported)', metavar='DIR')
+    parser.add_argument('--file-tree',    action='store_true', default=False,  help='Generate an file tree of each spidered host (json and txt)')
+    parser.add_argument('--file-tree-dir',      default='',                 help='file tree directory (default ~/.manspider/file_tree/)')
+    parser.add_argument('--check-write',   action='store_true',             help='Check if it is possible to write to the share')
+    parser.add_argument('--log-dir',      default='',                       help='log directory (default ~/.manspider/logs/)')
     parser.add_argument('-q', '--quiet',   action='store_true',             help='don\'t display matching file content')
     parser.add_argument('-n', '--no-download',   action='store_true',       help='don\'t download matching files')
     parser.add_argument('-mfail', '--max-failed-logons', type=int,          help='limit failed logons', metavar='INT')
@@ -114,6 +118,7 @@ def main():
 
         if options.verbose:
             log.setLevel('DEBUG')
+        setup_file_logging(options.log_dir)
 
         # make sure extension formats are valid
         for i, extension in enumerate(options.extensions):

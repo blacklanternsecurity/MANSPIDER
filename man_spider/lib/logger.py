@@ -88,13 +88,17 @@ console.setFormatter(ColoredFormatter('%(levelname)s %(message)s'))
 ### LOG TO FILE ###
 
 log_queue = Queue()
-listener = CustomQueueListener(log_queue, console)
 sender = QueueHandler(log_queue)
-logging.getLogger('manspider').handlers = [sender]
+listener = CustomQueueListener(log_queue, console)
 
-logdir = Path.home() / '.manspider' / 'logs'
-logdir.mkdir(parents=True, exist_ok=True)
-logfile = f'manspider_{datetime.now().strftime("%m-%d-%Y")}.log'
-handler = logging.FileHandler(str(logdir / logfile))
-handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
-logging.getLogger('manspider').addHandler(handler)
+def setup_file_logging(logdir=None):
+    logging.getLogger('manspider').handlers = [sender]
+    if logdir is not None and len(logdir) > 0:
+        logdir = Path(logdir)
+    else:
+        logdir = Path.home() / '.manspider' / 'logs'
+    logdir.mkdir(parents=True, exist_ok=True)
+    logfile = f'manspider_{datetime.now().strftime("%m-%d-%Y")}.log'
+    handler = logging.FileHandler(str(logdir / logfile))
+    handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+    logging.getLogger('manspider').addHandler(handler)
