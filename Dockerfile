@@ -1,7 +1,10 @@
-FROM python:3.6
+FROM python:3.10
 
-WORKDIR /
+RUN apt-get update && apt-get install -y krb5-user tesseract-ocr antiword
 
-RUN pip install git+https://github.com/blacklanternsecurity/manspider
+COPY . /manspider
+WORKDIR /manspider
+
+RUN pip install .
 
 ENTRYPOINT ["manspider"]

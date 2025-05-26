@@ -1,18 +1,9 @@
 # MANSPIDER
 ### Crawl SMB shares for juicy information. File content searching + regex is supported!
 
-### UPDATE 2023-10-15
-**[textract](https://github.com/deanmalmgren/textract), one of manspider's upstream dependencies, is no longer being updated. For this reason, you may run into problems when installing with pip. The recommended installation method is now [Docker](https://hub.docker.com/r/blacklanternsecurity/manspider):**
+### UPDATE 2025-05-26
 
-```bash
-docker run --rm -v ./manspider:/root/.manspider blacklanternsecurity/manspider --help
-```
-
-Note there is also a helper script `manspider.sh` which will automatically mount volumes for manspider's `loot` and `logs` directories, making it a bit more convenient to run:
-
-```bash
-./manspider.sh --help
-```
+**Manspider has been updated to support kerberos!** Also, the textract library has been replaced with [Extractous](https://github.com/yobix-ai/extractous), so you can now feel free to run it outside Docker. 🎉
 
 ![manspider](https://user-images.githubusercontent.com/20261699/74963251-6a08de80-53df-11ea-88f4-60c39665dfa2.gif)
 
@@ -41,6 +32,18 @@ Install manspider (please be patient, this can take a while):
 $ pip install pipx
 $ pipx install git+https://github.com/blacklanternsecurity/MANSPIDER
 ~~~
+
+## Installation (Docker)
+
+```bash
+docker run --rm -v ./manspider:/root/.manspider blacklanternsecurity/manspider --help
+```
+
+Note there is also a helper script `manspider.sh` which will automatically mount volumes for manspider's `loot` and `logs` directories, making it a bit more convenient to run:
+
+```bash
+./manspider.sh --help
+```
 
 ### Example #1: Search the network for filenames that may contain creds
 NOTE: matching files are automatically downloaded into `$HOME/.manspider/loot`! (`-n` to disable)

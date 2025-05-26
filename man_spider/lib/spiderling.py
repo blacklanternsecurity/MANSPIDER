@@ -1,14 +1,15 @@
 import string
 import logging
 import pathlib
-from .smb import *
-from .file import *
-from .util import *
-from .errors import *
 import multiprocessing
 from shutil import move
-from .processpool import *
 from traceback import format_exc
+
+from man_spider.lib.smb import *
+from man_spider.lib.file import *
+from man_spider.lib.util import *
+from man_spider.lib.errors import *
+from man_spider.lib.processpool import *
 
 
 log = logging.getLogger('manspider.spiderling')
@@ -74,6 +75,9 @@ class Spiderling:
                     parent.password,
                     parent.domain,
                     parent.nthash,
+                    parent.use_kerberos,
+                    parent.aes_key,
+                    parent.dc_ip
                 )
 
                 logon_result = self.smb_client.login()
@@ -260,7 +264,7 @@ class Spiderling:
                     try:
                         filesize = f.get_filesize()
                     except Exception as e:
-                        handle_impacket_error(e)
+                        self.smb_client.handle_impacket_error(e)
                         continue
 
                     # make the RemoteFile object (the file won't be read yet)

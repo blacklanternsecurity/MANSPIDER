@@ -1,23 +1,24 @@
-[tool.poetry]
+[project]
 name = "man-spider"
-version = "1.0.4"
+version = "1.1.2"
 description = "Full-featured SMB spider capable of searching file content"
-authors = ["TheTechromancer"]
-license = "GPL-3.0"
+authors = [
+    {name = "TheTechromancer"}
+]
+license = {text = "GPL-3.0"}
+readme = "README.md"
+requires-python = ">=3.8,<3.14"
+dependencies = [
+    "extractous (>=0.3.0,<0.4.0)",
+    "impacket (>=0.12.0,<0.13.0)",
+    "python-magic (>=0.4.27,<0.5.0)"
+]
 repository = "https://github.com/blacklanternsecurity/MANSPIDER"
 homepage = "https://github.com/blacklanternsecurity/MANSPIDER"
 
 [tool.poetry.scripts]
 manspider = 'man_spider.manspider:main'
 
-[tool.poetry.dependencies]
-python = "^3.6"
-impacket = "^0.9.22"
-python-magic = "^0.4.22"
-textract = {git = "https://github.com/tehabstract/textract"}
-
-[tool.poetry.dev-dependencies]
-
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
