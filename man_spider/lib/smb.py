@@ -2,6 +2,7 @@ import ntpath
 import struct
 import logging
 from .errors import *
+from impacket.smb import SMB_DIALECT
 from impacket.nmb import NetBIOSError, NetBIOSTimeout
 from impacket.smbconnection import SessionError, SMBConnection
 
@@ -50,49 +51,47 @@ class SMBClient:
             log.warning(f'{self.server}: Error listing shares: {e}')
 
 
-    def get_target_server(self):
-        '''
-        Returns the target server hostname or IP.
-
-        If kerberos is enabled, it will try to get the hostname from the SMB connection.
-        '''
-        hostname = self.get_hostname()
-        domain = self.get_dns_domain()
-        if not hostname:
-            return self.server
-        if domain:
-            return f"{hostname}.{domain}".lower()
-        return hostname
-
-
     def get_hostname(self):
         '''
         Get the hostname from the SMB connection
         '''
-        if self.hostname is None:
-            try:
-                # Get the server name from SMB
-                self.hostname = str(self.conn.getServerName()).strip().replace("\x00", "")
-                log.debug(f'{self.server}: Got hostname: {self.hostname}')
-            except Exception as e:
-                log.debug(f'{self.server}: Error getting hostname from SMB: {e}')
-                self.hostname = ""
-        return self.hostname
+        try:
+            conn = SMBConnection(
+                self.server,
+                self.server,
+                None,
+                445,
+                preferredDialect=SMB_DIALECT,
+                timeout=10,
+            )
 
+            if self.hostname is None:
+                try:
+                    # Get the server name from SMB
+                    self.hostname = str(conn.getServerName()).strip().replace("\x00", "").lower()
+                    if self.hostname:
+                        log.debug(f'{self.server}: Got hostname: {self.hostname}')
+                    else:
+                        log.debug(f'{self.server}: No hostname found')
+                except Exception as e:
+                    log.debug(f'{self.server}: Error getting hostname from SMB: {e}')
+                    self.hostname = ""
 
-    def get_dns_domain(self):
-        '''
-        Get the domain from the SMB connection
-        '''
-        if self.dns_domain is None:
-            try:
-                self.dns_domain = str(self.conn.getServerDNSDomainName()).strip().replace("\x00", "")
-                log.debug(f'{self.server}: Got DNS domain: {self.dns_domain}')
-            except Exception as e:
-                log.debug(f'{self.server}: Error getting DNS domain: {e}')
-                self.dns_domain = (self.domain if self.domain else "")
-        return self.dns_domain
+            if self.dns_domain is None:
+                try:
+                    self.dns_domain = str(conn.getServerDNSDomainName()).strip().replace("\x00", "").lower()
+                    if self.dns_domain:
+                        log.debug(f'{self.server}: Got DNS domain: {self.dns_domain}')
+                    else:
+                        log.debug(f'{self.server}: No DNS domain found')
+                except Exception as e:
+                    log.debug(f'{self.server}: Error getting DNS domain: {e}')
+                    self.dns_domain = (self.domain if self.domain else "")
 
+        except Exception as e:
+            log.debug(f'{self.server}: Error getting hostname: {e}')
+
+        return self.hostname, self.domain
 
     def login(self, refresh=False, first_try=True):
         '''
@@ -102,18 +101,20 @@ class SMBClient:
         Return False if logon failed
         '''
 
+        target_server = self.server
+        if self.use_kerberos:
+            hostname, domain = self.get_hostname()
+            if hostname:
+                target_server = hostname
+                if domain:
+                    target_server = f"{hostname}.{domain}"
+
         if self.conn is None or refresh:
             try:
-                self.conn = SMBConnection(self.server, self.server, sess_port=445, timeout=20)
+                self.conn = SMBConnection(target_server, target_server, sess_port=445, timeout=20)
             except Exception as e:
                 log.debug(impacket_error(e))
                 return None
-
-            # if kerberos is enabled, we try to use the hostname instead of the IP address
-            if self.use_kerberos:
-                target_server = self.get_target_server()
-                if target_server.lower() != self.server.lower():
-                    self.conn = SMBConnection(target_server, target_server, sess_port=445, timeout=20)
 
             try:
 
