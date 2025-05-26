@@ -1,7 +1,8 @@
-FROM python:3.6
+FROM python:3.7
 
-WORKDIR /
+COPY . /manspider
+WORKDIR /manspider
 
-RUN pip install git+https://github.com/blacklanternsecurity/manspider
+RUN pip install .
 
 ENTRYPOINT ["manspider"]

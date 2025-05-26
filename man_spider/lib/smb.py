@@ -14,7 +14,7 @@ class SMBClient:
     Wrapper around impacket's SMBConnection() object
     '''
 
-    def __init__(self, server, username, password, domain, nthash):
+    def __init__(self, server, username, password, domain, nthash, use_kerberos=False, aes_key=None, dc_ip=None):
 
         self.server = server
 
@@ -24,6 +24,11 @@ class SMBClient:
         self.password = password
         self.domain = domain
         self.nthash = nthash
+        self.use_kerberos = use_kerberos
+        self.aes_key = aes_key
+        self.dc_ip = dc_ip
+        self.hostname = None
+        self.dns_domain = None
         if self.nthash:
             self.lmhash = 'aad3b435b51404eeaad3b435b51404ee'
         else:
@@ -43,7 +48,50 @@ class SMBClient:
         except Exception as e:
             e = handle_impacket_error(e, self)
             log.warning(f'{self.server}: Error listing shares: {e}')
-            
+
+
+    def get_target_server(self):
+        '''
+        Returns the target server hostname or IP.
+
+        If kerberos is enabled, it will try to get the hostname from the SMB connection.
+        '''
+        hostname = self.get_hostname()
+        domain = self.get_dns_domain()
+        if not hostname:
+            return self.server
+        if domain:
+            return f"{hostname}.{domain}".lower()
+        return hostname
+
+
+    def get_hostname(self):
+        '''
+        Get the hostname from the SMB connection
+        '''
+        if self.hostname is None:
+            try:
+                # Get the server name from SMB
+                self.hostname = str(self.conn.getServerName()).strip().replace("\x00", "")
+                log.debug(f'{self.server}: Got hostname: {self.hostname}')
+            except Exception as e:
+                log.debug(f'{self.server}: Error getting hostname from SMB: {e}')
+                self.hostname = ""
+        return self.hostname
+
+
+    def get_dns_domain(self):
+        '''
+        Get the domain from the SMB connection
+        '''
+        if self.dns_domain is None:
+            try:
+                self.dns_domain = str(self.conn.getServerDNSDomainName()).strip().replace("\x00", "")
+                log.debug(f'{self.server}: Got DNS domain: {self.dns_domain}')
+            except Exception as e:
+                log.debug(f'{self.server}: Error getting DNS domain: {e}')
+                self.dns_domain = (self.domain if self.domain else "")
+        return self.dns_domain
 
 
     def login(self, refresh=False, first_try=True):
@@ -54,9 +102,15 @@ class SMBClient:
         Return False if logon failed
         '''
 
+        # if kerberos is enabled, we try to use the hostname instead of the IP address
+        if self.use_kerberos:
+            target_server = self.get_target_server()
+        else:
+            target_server = self.server
+
         if self.conn is None or refresh:
             try:
-                self.conn = SMBConnection(self.server, self.server, sess_port=445, timeout=20)
+                self.conn = SMBConnection(target_server, target_server, sess_port=445, timeout=20)
             except Exception as e:
                 log.debug(impacket_error(e))
                 return None
@@ -67,10 +121,21 @@ class SMBClient:
                     # skip to guest / null session
                     assert False
 
-                log.debug(f'{self.server}: Authenticating as "{self.domain}\\{self.username}"')
+                log.debug(f'{target_server} ({self.server}): Authenticating as "{self.domain}\\{self.username}"')
 
+                if self.use_kerberos:
+                    self.conn.kerberosLogin(
+                        self.username,
+                        self.password,
+                        self.domain,
+                        self.lmhash,
+                        self.nthash,
+                        self.aes_key,
+                        self.dc_ip,
+                        kdcHost=self.dc_ip,
+                    )
                 # pass the hash if requested
-                if self.nthash and not self.password:
+                elif self.nthash and not self.password:
                     self.conn.login(
                         self.username,
                         '',

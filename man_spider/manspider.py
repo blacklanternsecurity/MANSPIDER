@@ -86,6 +86,9 @@ def main():
     parser.add_argument('-l','--loot-dir',      default='',                 help='loot directory (default ~/.manspider/)')
     parser.add_argument('-m', '--maxdepth',     type=int,   default=10,     help='maximum depth to spider (default: 10)')
     parser.add_argument('-H', '--hash',         default='',                 help='NTLM hash for authentication')
+    parser.add_argument('-k', '--kerberos',     action='store_true',       help='Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters')
+    parser.add_argument('-aesKey', '--aes-key', action='store', metavar='HEX', help='AES key to use for Kerberos Authentication (128 or 256 bits)')
+    parser.add_argument('-dc-ip', '--dc-ip',    action='store', metavar='IP', help='IP Address of the domain controller. If omitted it will use the domain part (FQDN) specified in the target parameter')
     parser.add_argument('-t', '--threads',      type=int,   default=5,      help='concurrent threads (default: 5)')
     parser.add_argument('-f', '--filenames', nargs='+', default=[],         help=f'filter filenames using regex (space-separated)', metavar='REGEX')
     parser.add_argument('-e', '--extensions',nargs='+', default=[],         help='only show filenames with these extensions (space-separated, e.g. `docx xlsx` for only word & excel docs)', metavar='EXT')
@@ -114,6 +117,10 @@ def main():
 
         if options.verbose:
             log.setLevel('DEBUG')
+
+        if options.kerberos and not "KRB5CCNAME" in os.environ:
+            log.error("KRB5CCNAME is not set in the environment")
+            sys.exit(1)
 
         # make sure extension formats are valid
         for i, extension in enumerate(options.extensions):

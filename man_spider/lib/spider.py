@@ -25,6 +25,9 @@ class MANSPIDER:
         self.password           = options.password
         self.domain             = options.domain
         self.nthash             = options.hash
+        self.use_kerberos       = options.kerberos
+        self.aes_key            = options.aes_key
+        self.dc_ip              = options.dc_ip
         self.max_failed_logons  = options.max_failed_logons
         self.max_filesize       = options.max_filesize
 
@@ -204,6 +207,9 @@ class MANSPIDER:
                 self.password,
                 self.domain,
                 self.nthash,
+                self.use_kerberos,
+                self.aes_key,
+                self.dc_ip
             )
             logon_result = smb_client.login()
             if logon_result == False:
