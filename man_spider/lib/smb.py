@@ -131,7 +131,6 @@ class SMBClient:
                         self.lmhash,
                         self.nthash,
                         self.aes_key,
-                        self.dc_ip,
                         kdcHost=self.dc_ip,
                     )
                 # pass the hash if requested
