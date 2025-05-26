@@ -102,18 +102,18 @@ class SMBClient:
         Return False if logon failed
         '''
 
-        # if kerberos is enabled, we try to use the hostname instead of the IP address
-        if self.use_kerberos:
-            target_server = self.get_target_server()
-        else:
-            target_server = self.server
-
         if self.conn is None or refresh:
             try:
-                self.conn = SMBConnection(target_server, target_server, sess_port=445, timeout=20)
+                self.conn = SMBConnection(self.server, self.server, sess_port=445, timeout=20)
             except Exception as e:
                 log.debug(impacket_error(e))
                 return None
+
+            # if kerberos is enabled, we try to use the hostname instead of the IP address
+            if self.use_kerberos:
+                target_server = self.get_target_server()
+                if target_server.lower() != self.server.lower():
+                    self.conn = SMBConnection(target_server, target_server, sess_port=445, timeout=20)
 
             try:
 
