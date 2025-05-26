@@ -1,9 +1,7 @@
 import ntpath
-import struct
 import logging
 from .errors import *
 from contextlib import suppress
-from impacket.smb import SMB_DIALECT
 from impacket.nmb import NetBIOSError, NetBIOSTimeout
 from impacket.smbconnection import SessionError, SMBConnection
 
@@ -35,21 +33,36 @@ class SMBClient:
             self.lmhash = 'aad3b435b51404eeaad3b435b51404ee'
         else:
             self.lmhash = ''
+        self._shares = None
+
+
+    def list_shares(self):
+        '''
+        List shares on the SMB server
+        '''
+        resp = self.conn.listShares()
+        for i in range(len(resp)):
+            sharename = resp[i]['shi1_netname'][:-1]
+            log.debug(f'{self.server}: Found share: {sharename}')
+            yield sharename
 
 
     @property
     def shares(self):
-
-        try:
-            resp = self.conn.listShares()
-            for i in range(len(resp)):
-                sharename = resp[i]['shi1_netname'][:-1]
-                log.debug(f'{self.server}: Found share: {sharename}')
-                yield sharename
-            
-        except Exception as e:
-            e = handle_impacket_error(e, self)
-            log.warning(f'{self.server}: Error listing shares: {e}')
+        if self._shares is None:
+            try:
+                self._shares = list(self.list_shares())
+            except Exception as e:
+                e = self.handle_impacket_error(e)
+                log.debug(f'{self.server}: Error listing shares: {e}, retrying...')
+                self.rebuild(e)
+                try:
+                    self._shares = list(self.list_shares())
+                except Exception as e:
+                    e = self.handle_impacket_error(e)
+                    log.warning(f'{self.server}: Error listing shares: {e}')
+                    self.rebuild(e)
+        return self._shares or []
 
 
     def get_hostname(self):
@@ -162,7 +175,7 @@ class SMBClient:
             except Exception as e:
 
                 if type(e) != AssertionError:
-                    e = handle_impacket_error(e, self, display=True)
+                    e = self.handle_impacket_error(e, display=True)
 
                 # try guest account, then null session if logon failed
                 if first_try:
@@ -206,15 +219,37 @@ class SMBClient:
                 if f.get_longname() not in ['', '.', '..']:
                     yield f
         except Exception as e:
-            e = handle_impacket_error(e, self)
+            e = self.handle_impacket_error(e)
             raise FileListError(f'{e.args}: Error listing files at "{share}{nt_path}"')
-
 
 
     def rebuild(self, error=''):
         '''
         Rebuild our SMBConnection() if it gets borked
         '''
-
         log.debug(f'Rebuilding connection to {self.server} after error: {error}')
         self.login(refresh=True)
+
+
+    def handle_impacket_error(self, e, share='', filename='', display=False):
+        '''
+        Handle arbitrary Impacket errors
+        this is needed because the library doesn't implement proper inheritance for its exceptions
+        '''
+        resource_str = '/'.join([self.server, share, filename]).rstrip('/')
+
+        if type(e) == KeyboardInterrupt:
+            raise
+        elif type(e) in (NetBIOSError, NetBIOSTimeout, BrokenPipeError, SessionError, CSessionError):
+            # the connection may need to be rebuilt
+            if type(e) in (SessionError, CSessionError):
+                if any([x in str(e) for x in ('PASSWORD_EXPIRED',)]):
+                    self.rebuild(e)
+            else:
+                self.rebuild(e)
+        if type(e) in native_impacket_errors:
+            e = impacket_error(e)
+        if display:
+            log.debug(f'{resource_str}: {str(e)[:150]}')
+
+        return e

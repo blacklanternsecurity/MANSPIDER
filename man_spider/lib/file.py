@@ -39,7 +39,7 @@ r    '''
             try:
                 smb_client.conn.getFile(self.share, self.name, f.write)
             except Exception as e:
-                handle_impacket_error(e, smb_client, self.share, self.name)
+                smb_client.handle_impacket_error(e, self.share, self.name)
                 raise FileRetrievalError(f'Error retrieving file "{str(self)}": {str(e)[:150]}')
 
         # reset cursor back to zero so .read() will return the whole file

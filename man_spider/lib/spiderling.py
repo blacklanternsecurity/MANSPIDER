@@ -263,7 +263,7 @@ class Spiderling:
                     try:
                         filesize = f.get_filesize()
                     except Exception as e:
-                        handle_impacket_error(e)
+                        self.smb_client.handle_impacket_error(e)
                         continue
 
                     # make the RemoteFile object (the file won't be read yet)
