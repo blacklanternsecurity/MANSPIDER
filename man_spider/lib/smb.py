@@ -61,9 +61,9 @@ class SMBClient:
                 self.server,
                 None,
                 445,
-                preferredDialect=SMB_DIALECT,
                 timeout=10,
             )
+            conn.login("", "")
 
             if self.hostname is None:
                 try:
@@ -122,7 +122,10 @@ class SMBClient:
                     # skip to guest / null session
                     assert False
 
-                log.debug(f'{target_server} ({self.server}): Authenticating as "{self.domain}\\{self.username}"')
+                user_str = self.username
+                if self.domain:
+                    user_str = f'{self.domain}\\{self.username}'
+                log.debug(f'{target_server} ({self.server}): Authenticating as "{user_str}"')
 
                 if self.use_kerberos:
                     self.conn.kerberosLogin(
