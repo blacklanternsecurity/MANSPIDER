@@ -15,7 +15,7 @@ class SMBClient:
     Wrapper around impacket's SMBConnection() object
     '''
 
-    def __init__(self, server, username, password, domain, nthash, use_kerberos=False, aes_key=None, dc_ip=None):
+    def __init__(self, server, username, password, domain, nthash, use_kerberos=False, aes_key="", dc_ip=None):
 
         self.server = server
 
