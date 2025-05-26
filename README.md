@@ -141,9 +141,9 @@ For example, you could specify any or all of these:
 
 ## Usage:
 ~~~
-usage: manspider [-h] [-u USERNAME] [-p PASSWORD] [-d DOMAIN] [-m MAXDEPTH] [-H HASH] [-t THREADS] [-f REGEX [REGEX ...]] [-e EXT [EXT ...]] [--exclude-extensions EXT [EXT ...]]
-                 [-c REGEX [REGEX ...]] [--sharenames SHARE [SHARE ...]] [--exclude-sharenames [SHARE ...]] [--dirnames DIR [DIR ...]] [--exclude-dirnames DIR [DIR ...]] [-q] [-n]
-                 [-mfail INT] [-o] [-s SIZE] [-v]
+usage: manspider [-h] [-u USERNAME] [-p PASSWORD] [-d DOMAIN] [-l LOOT_DIR] [-m MAXDEPTH] [-H HASH] [-k] [-aesKey HEX] [-dc-ip IP] [-t THREADS] [-f REGEX [REGEX ...]] [-e EXT [EXT ...]]
+                 [--exclude-extensions EXT [EXT ...]] [-c REGEX [REGEX ...]] [--sharenames SHARE [SHARE ...]] [--exclude-sharenames [SHARE ...]] [--dirnames DIR [DIR ...]]
+                 [--exclude-dirnames DIR [DIR ...]] [-q] [-n] [-mfail INT] [-o] [-s SIZE] [-v]
                  targets [targets ...]
 
 Scan for juicy data on SMB shares. Matching files and logs are stored in $HOME/.manspider. All filters are case-insensitive.
@@ -152,26 +152,31 @@ positional arguments:
   targets               IPs, Hostnames, CIDR ranges, or files containing targets to spider (NOTE: local searching also supported, specify directory name or keyword "loot" to search
                         downloaded files)
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  -u USERNAME, --username USERNAME
+  -u, --username USERNAME
                         username for authentication
-  -p PASSWORD, --password PASSWORD
+  -p, --password PASSWORD
                         password for authentication
-  -d DOMAIN, --domain DOMAIN
-                        domain for authentication
-  -m MAXDEPTH, --maxdepth MAXDEPTH
+  -d, --domain DOMAIN   domain for authentication
+  -l, --loot-dir LOOT_DIR
+                        loot directory (default ~/.manspider/)
+  -m, --maxdepth MAXDEPTH
                         maximum depth to spider (default: 10)
-  -H HASH, --hash HASH  NTLM hash for authentication
-  -t THREADS, --threads THREADS
+  -H, --hash HASH       NTLM hash for authentication
+  -k, --kerberos        Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters
+  -aesKey, --aes-key HEX
+                        AES key to use for Kerberos Authentication (128 or 256 bits)
+  -dc-ip, --dc-ip IP    IP Address of the domain controller. If omitted it will use the domain part (FQDN) specified in the target parameter
+  -t, --threads THREADS
                         concurrent threads (default: 5)
-  -f REGEX [REGEX ...], --filenames REGEX [REGEX ...]
+  -f, --filenames REGEX [REGEX ...]
                         filter filenames using regex (space-separated)
-  -e EXT [EXT ...], --extensions EXT [EXT ...]
+  -e, --extensions EXT [EXT ...]
                         only show filenames with these extensions (space-separated, e.g. `docx xlsx` for only word & excel docs)
   --exclude-extensions EXT [EXT ...]
                         ignore files with these extensions
-  -c REGEX [REGEX ...], --content REGEX [REGEX ...]
+  -c, --content REGEX [REGEX ...]
                         search for file content using regex (multiple supported)
   --sharenames SHARE [SHARE ...]
                         only search shares with these names (multiple supported)
@@ -183,10 +188,10 @@ optional arguments:
                         don't search directories containing these strings (multiple supported)
   -q, --quiet           don't display matching file content
   -n, --no-download     don't download matching files
-  -mfail INT, --max-failed-logons INT
+  -mfail, --max-failed-logons INT
                         limit failed logons
   -o, --or-logic        use OR logic instead of AND (files are downloaded if filename OR extension OR content match)
-  -s SIZE, --max-filesize SIZE
+  -s, --max-filesize SIZE
                         don't retrieve files over this size, e.g. "500K" or ".5M" (default: 10M)
   -v, --verbose         show debugging messages
 ~~~
