@@ -1,7 +1,7 @@
-import io
-from .util import *
-from .errors import *
 from pathlib import Path
+
+from man_spider.lib.util import *
+from man_spider.lib.errors import *
 
 
 class RemoteFile():

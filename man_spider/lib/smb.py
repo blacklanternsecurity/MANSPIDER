@@ -1,9 +1,10 @@
 import ntpath
 import logging
-from .errors import *
 from contextlib import suppress
 from impacket.nmb import NetBIOSError, NetBIOSTimeout
 from impacket.smbconnection import SessionError, SMBConnection
+
+from man_spider.lib.errors import *
 
 # set up logging
 log = logging.getLogger('manspider.smb')

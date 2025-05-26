@@ -1,12 +1,11 @@
 import re
-import sys
 import queue
-import threading
 from time import sleep
 import multiprocessing
 from pathlib import Path
-from .spiderling import *
-from .parser import FileParser
+
+from man_spider.lib.spiderling import *
+from man_spider.lib.parser import FileParser
 
 # set up logging
 log = logging.getLogger('manspider')

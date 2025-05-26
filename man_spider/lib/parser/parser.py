@@ -1,31 +1,17 @@
 import re
 import magic
 import logging
-import textract
-from ..util import *
-from ..logger import *
+from time import sleep
 import subprocess as sp
-from ..logger import ColoredFormatter
+from extractous import Extractor
+
+from man_spider.lib.util import *
+from man_spider.lib.logger import *
 
 log = logging.getLogger('manspider.parser')
 
 
 class FileParser:
-
-    # parsed using the textract library
-    textract_extensions = [
-        '.doc',
-        '.docx',
-        '.xls',
-        '.xlsx',
-        '.ppt',
-        '.pptx',
-        '.pdf',
-        '.eml',
-        '.png',
-        '.jpg',
-        '.jpeg'
-    ]
 
     # don't parse files with these magic types
     magic_blacklist = [
@@ -39,10 +25,9 @@ class FileParser:
 
 
     def __init__(self, filters, quiet=False):
-
         self.init_content_filters(filters)
+        self.extractor = Extractor()
         self.quiet = quiet
-
 
 
     def init_content_filters(self, file_content):
@@ -91,7 +76,6 @@ class FileParser:
         return True
 
 
-
     def grep(self, content, pattern):
 
         if not self.quiet:
@@ -133,10 +117,9 @@ class FileParser:
 
         try:
 
-            matches = self.textract(file, pretty_filename=pretty_filename)
+            matches = self.extractous(file, pretty_filename=pretty_filename)
 
         except Exception as e:
-            #except (BadZipFile, textract.exceptions.CommandLineError) as e:
             if log.level <= logging.DEBUG:
                 log.warning(f'Error extracting text from {pretty_filename}: {e}')
             else:
@@ -145,36 +128,27 @@ class FileParser:
         return matches
 
 
-    def textract(self, file, pretty_filename):
+    def extractous(self, file, pretty_filename):
         '''
-        Extracts text from a file
-        Uses the textract library on specific extensions
+        Extracts text from a file using the extractous library
         '''
 
         matches = dict()
 
         suffix = Path(str(file)).suffix.lower()
 
-        # textract
-        if suffix in self.textract_extensions:
-            binary_content = textract.process(str(file), encoding='utf-8')
-            text_content = better_decode(binary_content)
-
-        # normal
-        elif self.match_magic(file):
-            with open(str(file), 'rb') as f:
-                binary_content = f.read()
-            text_content = better_decode(binary_content)
-
-        else:
+        # blacklist certain mime types
+        if not self.match_magic(file):
             return matches
+
+        text_content, metadata = self.extractor.extract_file_to_string(str(file))
 
         # try to convert to UTF-8 for grep-friendliness
         try:
-            binary_content = text_content.encode('utf-8')
+            binary_content = text_content.encode('utf-8', errors='ignore')
         except Exception:
             pass
-            
+
         # count the matches
         for _filter, match in self.match(text_content):
             try:

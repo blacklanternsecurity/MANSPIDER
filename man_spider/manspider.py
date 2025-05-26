@@ -5,9 +5,10 @@ import pathlib
 import logging
 import argparse
 import traceback
-from .lib import *
 from time import sleep
 import multiprocessing
+
+from man_spider.lib import *
 
 
 # set up logging

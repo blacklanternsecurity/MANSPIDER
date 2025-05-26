@@ -1,14 +1,15 @@
 import string
 import logging
 import pathlib
-from .smb import *
-from .file import *
-from .util import *
-from .errors import *
 import multiprocessing
 from shutil import move
-from .processpool import *
 from traceback import format_exc
+
+from man_spider.lib.smb import *
+from man_spider.lib.file import *
+from man_spider.lib.util import *
+from man_spider.lib.errors import *
+from man_spider.lib.processpool import *
 
 
 log = logging.getLogger('manspider.spiderling')
