@@ -2,6 +2,7 @@ import ntpath
 import struct
 import logging
 from .errors import *
+from contextlib import suppress
 from impacket.smb import SMB_DIALECT
 from impacket.nmb import NetBIOSError, NetBIOSTimeout
 from impacket.smbconnection import SessionError, SMBConnection
@@ -63,7 +64,8 @@ class SMBClient:
                 445,
                 timeout=10,
             )
-            conn.login("", "")
+            with suppress(Exception):
+                conn.login("", "")
 
             if self.hostname is None:
                 try:
