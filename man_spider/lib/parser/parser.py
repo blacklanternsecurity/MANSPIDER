@@ -141,7 +141,26 @@ class FileParser:
         if not self.match_magic(file):
             return matches
 
-        text_content, metadata = self.extractor.extract_file_to_string(str(file))
+        # XML files: read raw to preserve attributes and handle encoding
+        if suffix == '.xml':
+            log.debug(f'Parsing raw XML for {pretty_filename}')
+            try:
+                # read raw bytes and detect BOM for encoding
+                with open(file, 'rb') as f:
+                    raw_bytes = f.read()
+                if raw_bytes.startswith(b'\xff\xfe') or raw_bytes.startswith(b'\xfe\xff'):
+                    text_content = raw_bytes.decode('utf-16', errors='ignore')
+                elif raw_bytes.startswith(b'\xef\xbb\bf'):
+                    text_content = raw_bytes.decode('utf-8-sig', errors='ignore')
+                else:
+                    text_content = raw_bytes.decode('utf-8', errors='ignore')
+                metadata = {}
+            except Exception as e:
+                log.warning(f"Error reading raw XML for {pretty_filename}: {e}")
+                return matches
+        else:
+            # non-XML: extract text via extractous
+            text_content, metadata = self.extractor.extract_file_to_string(str(file))
 
         # try to convert to UTF-8 for grep-friendliness
         try:
