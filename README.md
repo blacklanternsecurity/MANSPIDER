@@ -1,6 +1,10 @@
 # MANSPIDER
 ### Crawl SMB shares for juicy information. File content searching + regex is supported!
 
+### UPDATE 2025-07-31
+
+We're aware of a [bug](https://github.com/blacklanternsecurity/MANSPIDER/issues/56) in **extractous** causing errors in MANSPIDER's text extraction. If you're affected by this bug, you can use the legacy Docker image at [`blacklanternsecurity/manspider:legacy`](https://hub.docker.com/layers/blacklanternsecurity/manspider/legacy/images/sha256-9c9c355223dc87731db8bbe3e3c3976cbe3f62a17defbed4a3c1e1c2ce918494), which uses the old `textract` library instead.
+
 ### UPDATE 2025-05-26
 
 **Manspider has been updated to support kerberos!** Also, the textract library has been replaced with [Extractous](https://github.com/yobix-ai/extractous), so you can now feel free to run it outside Docker. 🎉
