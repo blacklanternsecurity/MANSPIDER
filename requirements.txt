@@ -3,7 +3,7 @@ cffi==1.17.1 ; python_version >= "3.8" and python_version < "3.14" and platform_
 charset-normalizer==3.4.2 ; python_version >= "3.8" and python_version < "3.14"
 click==8.1.8 ; python_version >= "3.8" and python_version < "3.14"
 colorama==0.4.6 ; python_version >= "3.8" and python_version < "3.14" and platform_system == "Windows"
-cryptography==42.0.8 ; python_version >= "3.8" and python_version < "3.14"
+cryptography==44.0.1 ; python_version >= "3.8" and python_version < "3.14"
 dnspython==2.6.1 ; python_version >= "3.8" and python_version < "3.14"
 extractous==0.3.0 ; python_version >= "3.8" and python_version < "3.14"
 flask==3.0.3 ; python_version >= "3.8" and python_version < "3.14"
