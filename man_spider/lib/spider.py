@@ -44,6 +44,7 @@ class MANSPIDER:
 
         self.extension_blacklist= options.exclude_extensions
         self.file_extensions    = options.extensions
+        
         if self.file_extensions:
             extensions_str = '"' + '", "'.join(list(self.file_extensions)) + '"'
             log.info(f'Searching by file extension: {extensions_str}')
@@ -74,6 +75,15 @@ class MANSPIDER:
 
         if not options.no_download:
             log.info(f'Matching files will be downloaded to {self.loot_dir}')
+
+        
+        self.modified_after = options.modified_after
+        self.modified_before = options.modified_before
+
+        if self.modified_after:
+            log.info(f'Filtering files modified after: {self.modified_after.strftime("%Y-%m-%d")}')
+        if self.modified_before:
+            log.info(f'Filtering files modified before: {self.modified_before.strftime("%Y-%m-%d")}')
 
 
     def start(self):

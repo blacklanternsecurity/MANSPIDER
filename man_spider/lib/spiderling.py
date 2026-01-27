@@ -4,6 +4,7 @@ import pathlib
 import multiprocessing
 from shutil import move
 from traceback import format_exc
+from datetime import datetime
 
 from man_spider.lib.smb import *
 from man_spider.lib.file import *
@@ -150,6 +151,16 @@ class Spiderling:
                 if self.extension_blacklisted(file):
                     log.debug(f'{self.target}: Skipping {file}: extension is blacklisted')
                     continue
+
+                try:
+                    mod_time = file.stat().st_mtime
+                except Exception:
+                    mod_time = None
+                
+                if not self.date_match(mod_time):
+                    log.debug(f'Skipping {file}: does not match date filters')
+                    continue
+                
                 if self.path_match(file) or (self.parent.or_logic and self.parent.parser.content_filters):
                     if self.path_match(file):
                         log.debug(pathlib.Path(file).relative_to(self.target))
@@ -266,6 +277,19 @@ class Spiderling:
                     except Exception as e:
                         self.smb_client.handle_impacket_error(e)
                         continue
+
+
+                    try:
+                        mod_time = f.get_mtime_epoch()
+                    except Exception as e:
+                        self.smb_client.handle_impacket_error(e)
+                        mod_time = None
+
+                    # check if file matches date filters
+                    if not self.date_match(mod_time):
+                        log.debug(f'{self.target}: Skipping {share}{full_path}: does not match date filters')
+                        continue
+
 
                     # make the RemoteFile object (the file won't be read yet)
                     full_path_fixed = full_path.lstrip('\\')
@@ -461,3 +485,30 @@ class Spiderling:
 
         return False
 
+
+    def date_match(self, file_time):
+        '''
+        Return True if file modification time matches date filters
+        file_time is a unix timestamp
+        '''
+
+        
+        if file_time is None:
+            return True
+        
+        # Convert timestamp to datetime
+        file_date = datetime.fromtimestamp(file_time)
+        
+        # Check modified_after
+        if self.parent.modified_after:
+            if file_date < self.parent.modified_after:
+                log.debug(f'{self.target}: File too old: {file_date.strftime("%Y-%m-%d")}')
+                return False
+        
+        # Check modified_before
+        if self.parent.modified_before:
+            if file_date > self.parent.modified_before:
+                log.debug(f'{self.target}: File too new: {file_date.strftime("%Y-%m-%d")}')
+                return False
+        
+        return True
