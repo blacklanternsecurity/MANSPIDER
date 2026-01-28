@@ -3,7 +3,7 @@ import magic
 import logging
 from time import sleep
 import subprocess as sp
-from extractous import Extractor
+from kreuzberg import extract_file_sync
 
 from man_spider.lib.util import *
 from man_spider.lib.logger import *
@@ -26,7 +26,6 @@ class FileParser:
 
     def __init__(self, filters, quiet=False):
         self.init_content_filters(filters)
-        self.extractor = Extractor()
         self.quiet = quiet
 
 
@@ -117,7 +116,7 @@ class FileParser:
 
         try:
 
-            matches = self.extractous(file, pretty_filename=pretty_filename)
+            matches = self.extract_text(file, pretty_filename=pretty_filename)
 
         except Exception as e:
             if log.level <= logging.DEBUG:
@@ -128,20 +127,19 @@ class FileParser:
         return matches
 
 
-    def extractous(self, file, pretty_filename):
+    def extract_text(self, file, pretty_filename):
         '''
-        Extracts text from a file using the extractous library
+        Extracts text from a file using the kreuzberg library
         '''
 
         matches = dict()
-
-        suffix = Path(str(file)).suffix.lower()
 
         # blacklist certain mime types
         if not self.match_magic(file):
             return matches
 
-        text_content, metadata = self.extractor.extract_file_to_string(str(file))
+        result = extract_file_sync(str(file))
+        text_content = result.content
 
         # try to convert to UTF-8 for grep-friendliness
         try:
