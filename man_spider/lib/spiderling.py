@@ -152,14 +152,15 @@ class Spiderling:
                     log.debug(f'{self.target}: Skipping {file}: extension is blacklisted')
                     continue
 
-                try:
-                    mod_time = file.stat().st_mtime
-                except Exception:
-                    mod_time = None
-                
-                if not self.date_match(mod_time):
-                    log.debug(f'Skipping {file}: does not match date filters')
-                    continue
+                if self.parent.modified_after or self.parent.modified_before:
+                    try:
+                        mod_time = file.stat().st_mtime
+                    except Exception:
+                        mod_time = None
+                    
+                    if not self.date_match(mod_time):
+                        log.debug(f'Skipping {file}: does not match date filters')
+                        continue
                 
                 if self.path_match(file) or (self.parent.or_logic and self.parent.parser.content_filters):
                     if self.path_match(file):
@@ -278,17 +279,17 @@ class Spiderling:
                         self.smb_client.handle_impacket_error(e)
                         continue
 
+                    if self.parent.modified_after or self.parent.modified_before:
+                        try:
+                            mod_time = f.get_mtime_epoch()
+                        except Exception as e:
+                            self.smb_client.handle_impacket_error(e)
+                            mod_time = None
 
-                    try:
-                        mod_time = f.get_mtime_epoch()
-                    except Exception as e:
-                        self.smb_client.handle_impacket_error(e)
-                        mod_time = None
-
-                    # check if file matches date filters
-                    if not self.date_match(mod_time):
-                        log.debug(f'{self.target}: Skipping {share}{full_path}: does not match date filters')
-                        continue
+                        # check if file matches date filters
+                        if not self.date_match(mod_time):
+                            log.debug(f'{self.target}: Skipping {share}{full_path}: does not match date filters')
+                            continue
 
 
                     # make the RemoteFile object (the file won't be read yet)
