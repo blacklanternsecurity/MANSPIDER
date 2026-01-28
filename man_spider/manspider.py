@@ -7,6 +7,7 @@ import argparse
 import traceback
 from time import sleep
 import multiprocessing
+from datetime import datetime
 
 from man_spider.lib import *
 
@@ -105,7 +106,8 @@ def main():
     parser.add_argument('-o', '--or-logic', action='store_true',            help=f'use OR logic instead of AND (files are downloaded if filename OR extension OR content match)')
     parser.add_argument('-s', '--max-filesize', type=human_to_int, default=human_to_int('10M'), help=f'don\'t retrieve files over this size, e.g. "500K" or ".5M" (default: 10M)', metavar='SIZE')
     parser.add_argument('-v', '--verbose', action='store_true',             help='show debugging messages')
-    
+    parser.add_argument('--modified-after', type=str, metavar='DATE',       help='only show files modified after this date (format: YYYY-MM-DD)')
+    parser.add_argument('--modified-before', type=str, metavar='DATE',      help='only show files modified before this date (format: YYYY-MM-DD)')
 
     syntax_error = False
     try:
@@ -122,6 +124,25 @@ def main():
         if options.kerberos and not "KRB5CCNAME" in os.environ:
             log.error("KRB5CCNAME is not set in the environment")
             sys.exit(1)
+
+        # Parse date filters
+        if options.modified_after:
+            try:
+                options.modified_after = datetime.strptime(options.modified_after, '%Y-%m-%d')
+            except ValueError:
+                log.error('Invalid date format for --modified-after. Use YYYY-MM-DD')
+                sys.exit(1)
+        else:
+            options.modified_after = None
+
+        if options.modified_before:
+            try:
+                options.modified_before = datetime.strptime(options.modified_before, '%Y-%m-%d')
+            except ValueError:
+                log.error('Invalid date format for --modified-before. Use YYYY-MM-DD')
+                sys.exit(1)
+        else:
+            options.modified_before = None
 
         # make sure extension formats are valid
         for i, extension in enumerate(options.extensions):

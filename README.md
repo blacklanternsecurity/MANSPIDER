@@ -116,6 +116,11 @@ $ manspider share.evilcorp.local -e kdbx kdb 1pif agilekeychain opvault lpd dash
 $ manspider share.evilcorp.local -e pfx p12 pkcs12 pem key crt cer csr jks keystore key keys der -d evilcorp -u bob -p Passw0rd
 ~~~
 
+### Example #10: Search for recently modified files
+~~~
+$ manspider share.evilcorp.local -e docx xlsx pdf --modified-after 2026-01-01 -d evilcorp -u bob -p Passw0rd
+~~~
+
 ### Usage Tip #1:
 You can run multiple instances of manspider at one time. This is useful when one instance is already running, and you want to search what it's downloaded (similar to `grep -R`). To do this, specify the keyword `loot` as the target, which will search the downloaded files in `$HOME/.manspider/loot`.
 
@@ -198,4 +203,8 @@ options:
   -s, --max-filesize SIZE
                         don't retrieve files over this size, e.g. "500K" or ".5M" (default: 10M)
   -v, --verbose         show debugging messages
+  --modified-after DATE
+                        only show files modified after this date (format: YYYY-MM-DD)
+  --modified-before DATE
+                        only show files modified before this date (format: YYYY-MM-DD)
 ~~~
