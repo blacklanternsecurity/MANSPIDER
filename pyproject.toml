@@ -1,17 +1,17 @@
 [project]
 name = "man-spider"
-version = "1.1.2"
+version = "2.0.0"
 description = "Full-featured SMB spider capable of searching file content"
 authors = [
     {name = "TheTechromancer"}
 ]
 license = {text = "GPL-3.0"}
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.10"
 dependencies = [
-    "kreuzberg>=0.9.0",
-    "impacket>=0.12.0,<0.13.0",
-    "python-magic>=0.4.27,<0.5.0",
+    "kreuzberg",
+    "impacket",
+    "python-magic",
 ]
 
 [project.urls]
