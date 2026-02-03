@@ -7,14 +7,17 @@ from man_spider.lib.parser.parser import is_text_file, extract_text_file
 TESTDATA = Path(__file__).parent.parent / "testdata"
 
 
-@pytest.mark.parametrize("filename", [
-    "test.docx",
-    "test.pdf",
-    "test.xlsx",
-    "test.png",
-    "test.doc",
-    "test.xls",
-])
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "test.docx",
+        "test.pdf",
+        "test.xlsx",
+        "test.png",
+        "test.doc",
+        "test.xls",
+    ],
+)
 def test_extract_password(filename):
     """Extract text from test files and verify Password123 is found."""
     filepath = TESTDATA / filename
@@ -25,16 +28,19 @@ def test_extract_password(filename):
     assert "Password123" in result.content, f"Password123 not found in {filename}: {result.content[:200]}"
 
 
-@pytest.mark.parametrize("filename", [
-    "test-ascii.txt",
-    "test-utf8.txt",
-    "test-utf8-bom.txt",
-    "test-utf16le.txt",
-    "test-utf16be.txt",
-    "test-utf16-bom.txt",
-    "test-latin1.txt",
-    "test-cp1252.txt",
-])
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "test-ascii.txt",
+        "test-utf8.txt",
+        "test-utf8-bom.txt",
+        "test-utf16le.txt",
+        "test-utf16be.txt",
+        "test-utf16-bom.txt",
+        "test-latin1.txt",
+        "test-cp1252.txt",
+    ],
+)
 def test_extract_text_encodings(filename):
     """Extract text from various encodings using charset-normalizer."""
     filepath = TESTDATA / filename

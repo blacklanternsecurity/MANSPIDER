@@ -21,6 +21,12 @@ Homepage = "https://github.com/blacklanternsecurity/MANSPIDER"
 [project.scripts]
 manspider = "man_spider.manspider:main"
 
+[tool.ruff]
+line-length = 119
+exclude = ["kreuzberg", "uv", ".venv"]
+lint.select = ["E", "F"]
+lint.ignore = ["E402", "E711", "E712", "E713", "E721", "E722", "E741", "F403", "F405", "F841", "E501"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -28,4 +34,5 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "ruff>=0.15.0",
 ]

@@ -5,20 +5,24 @@ from impacket.smb import SessionError, UnsupportedFeature
 from impacket.smbconnection import SessionError as CSessionError
 
 # set up logging
-log = logging.getLogger('manspider')
+log = logging.getLogger("manspider")
 
 
 class MANSPIDERError(Exception):
     pass
 
+
 class FileRetrievalError(MANSPIDERError):
     pass
+
 
 class ShareListError(MANSPIDERError):
     pass
 
+
 class FileListError(MANSPIDERError):
     pass
+
 
 class LogonFailure(MANSPIDERError):
     pass
@@ -41,9 +45,9 @@ impacket_errors = (
 
 
 def impacket_error(e):
-    '''
+    """
     Tries to format impacket exceptions nicely
-    '''
+    """
     if type(e) in (SessionError, CSessionError):
         try:
             error_str = e.getErrorString()[0]
@@ -51,5 +55,5 @@ def impacket_error(e):
         except (IndexError,):
             pass
     if not e.args:
-        e.args = ('',)
+        e.args = ("",)
     return e

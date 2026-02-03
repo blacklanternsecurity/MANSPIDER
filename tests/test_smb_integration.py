@@ -214,14 +214,14 @@ class TestMANSPIDER:
     # Base names to search for in loot filenames (MANSPIDER removes hyphens and adds prefix)
     # Format: original filename -> pattern to search for in loot filename
     EXPECTED_TEXT_PATTERNS = [
-        "testascii",      # test-ascii.txt
-        "testutf8.txt",   # test-utf8.txt (exact, no hyphen version)
-        "testutf8bom",    # test-utf8-bom.txt
-        "testutf16le",    # test-utf16le.txt
-        "testutf16be",    # test-utf16be.txt
-        "testutf16bom",   # test-utf16-bom.txt
-        "testlatin1",     # test-latin1.txt
-        "testcp1252",     # test-cp1252.txt
+        "testascii",  # test-ascii.txt
+        "testutf8.txt",  # test-utf8.txt (exact, no hyphen version)
+        "testutf8bom",  # test-utf8-bom.txt
+        "testutf16le",  # test-utf16le.txt
+        "testutf16be",  # test-utf16be.txt
+        "testutf16bom",  # test-utf16-bom.txt
+        "testlatin1",  # test-latin1.txt
+        "testcp1252",  # test-cp1252.txt
     ]
 
     EXPECTED_DOCUMENT_PATTERNS = [
@@ -233,11 +233,11 @@ class TestMANSPIDER:
     ]
 
     EXPECTED_BINARY_PATTERNS = [
-        "testbinarysmall",   # test-binary-small.bin
+        "testbinarysmall",  # test-binary-small.bin
         "testbinarymedium",  # test-binary-medium.bin
-        "testbinarylarge",   # test-binary-large.bin
-        "testbinarystart",   # test-binary-start.bin
-        "testbinaryend",     # test-binary-end.bin
+        "testbinarylarge",  # test-binary-large.bin
+        "testbinarystart",  # test-binary-start.bin
+        "testbinaryend",  # test-binary-end.bin
     ]
 
     def _find_matching_files(self, loot_dir, patterns, extension):

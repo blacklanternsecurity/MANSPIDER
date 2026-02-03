@@ -218,3 +218,18 @@ options:
   --modified-before DATE
                         only show files modified before this date (format: YYYY-MM-DD)
 ~~~
+
+## Linting
+
+This project uses [ruff](https://github.com/astral-sh/ruff) for linting and formatting.
+
+```bash
+# Run linter
+uv run ruff check .
+
+# Run linter with auto-fix
+uv run ruff check --fix .
+
+# Run formatter
+uv run ruff format .
+```

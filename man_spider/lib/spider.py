@@ -8,46 +8,45 @@ from man_spider.lib.spiderling import *
 from man_spider.lib.parser import FileParser
 
 # set up logging
-log = logging.getLogger('manspider')
+log = logging.getLogger("manspider")
 
 
 class MANSPIDER:
-
     def __init__(self, options):
 
-        self.targets            = options.targets
-        self.threads            = options.threads
-        self.maxdepth           = options.maxdepth
-        self.quiet              = options.quiet
+        self.targets = options.targets
+        self.threads = options.threads
+        self.maxdepth = options.maxdepth
+        self.quiet = options.quiet
 
-        self.username           = options.username
-        self.password           = options.password
-        self.domain             = options.domain
-        self.nthash             = options.hash
-        self.use_kerberos       = options.kerberos
-        self.aes_key            = options.aes_key
-        self.dc_ip              = options.dc_ip
-        self.max_failed_logons  = options.max_failed_logons
-        self.max_filesize       = options.max_filesize
+        self.username = options.username
+        self.password = options.password
+        self.domain = options.domain
+        self.nthash = options.hash
+        self.use_kerberos = options.kerberos
+        self.aes_key = options.aes_key
+        self.dc_ip = options.dc_ip
+        self.max_failed_logons = options.max_failed_logons
+        self.max_filesize = options.max_filesize
 
-        self.share_whitelist    = options.sharenames
-        self.share_blacklist    = options.exclude_sharenames
+        self.share_whitelist = options.sharenames
+        self.share_blacklist = options.exclude_sharenames
 
-        self.dir_whitelist      = options.dirnames
-        self.dir_blacklist      = options.exclude_dirnames
+        self.dir_whitelist = options.dirnames
+        self.dir_blacklist = options.exclude_dirnames
 
-        self.no_download        = options.no_download
+        self.no_download = options.no_download
 
         # applies "or" logic instead of "and"
         # e.g. file is downloaded if filename OR extension OR content match
-        self.or_logic           = options.or_logic
+        self.or_logic = options.or_logic
 
-        self.extension_blacklist= options.exclude_extensions
-        self.file_extensions    = options.extensions
-        
+        self.extension_blacklist = options.exclude_extensions
+        self.file_extensions = options.extensions
+
         if self.file_extensions:
             extensions_str = '"' + '", "'.join(list(self.file_extensions)) + '"'
-            log.info(f'Searching by file extension: {extensions_str}')
+            log.info(f"Searching by file extension: {extensions_str}")
 
         self.init_filename_filters(options.filenames)
         self.parser = FileParser(options.content, quiet=self.quiet)
@@ -62,29 +61,27 @@ class MANSPIDER:
         self.smb_client_cache = dict()
 
         # directory to store documents when searching contents
-        self.tmp_dir = Path('/tmp/.manspider')
+        self.tmp_dir = Path("/tmp/.manspider")
         self.tmp_dir.mkdir(exist_ok=True)
 
         # directory to store matching documents
-        self.loot_dir = Path.home() / '.manspider' / 'loot'
+        self.loot_dir = Path.home() / ".manspider" / "loot"
 
-        if(options.loot_dir):
-            self.loot_dir=Path(options.loot_dir)
-        
+        if options.loot_dir:
+            self.loot_dir = Path(options.loot_dir)
+
         self.loot_dir.mkdir(parents=True, exist_ok=True)
 
         if not options.no_download:
-            log.info(f'Matching files will be downloaded to {self.loot_dir}')
+            log.info(f"Matching files will be downloaded to {self.loot_dir}")
 
-        
         self.modified_after = options.modified_after
         self.modified_before = options.modified_before
 
         if self.modified_after:
-            log.info(f'Filtering files modified after: {self.modified_after.strftime("%Y-%m-%d")}')
+            log.info(f"Filtering files modified after: {self.modified_after.strftime('%Y-%m-%d')}")
         if self.modified_before:
-            log.info(f'Filtering files modified before: {self.modified_before.strftime("%Y-%m-%d")}')
-
+            log.info(f"Filtering files modified before: {self.modified_before.strftime('%Y-%m-%d')}")
 
     def start(self):
 
@@ -109,7 +106,7 @@ class MANSPIDER:
                 continue
 
             # save on CPU
-            sleep(.1)
+            sleep(0.1)
 
         while 1:
             self.check_spiderling_queue()
@@ -120,23 +117,19 @@ class MANSPIDER:
         # make sure the queue is empty
         self.check_spiderling_queue()
 
-
-
     def init_file_extensions(self, file_extensions):
-        '''
+        """
         Get ready to search by file extension
-        '''
+        """
 
         self.file_extensions = FileExtensions()
         if file_extensions:
             self.file_extensions.update(file_extensions)
-            
-
 
     def init_filename_filters(self, filename_filters):
-        '''
+        """
         Get ready to search by filename
-        '''
+        """
 
         # strings to look for in filenames
         # if empty, all filenames are matched
@@ -144,23 +137,22 @@ class MANSPIDER:
         for f in filename_filters:
             regex_str = str(f)
             try:
-                if not any([f.startswith(x) for x in ['^', '.*']]):
-                    regex_str = rf'.*{regex_str}'
-                if not any([f.endswith(x) for x in ['$', '.*']]):
-                    regex_str = rf'{regex_str}.*'
+                if not any([f.startswith(x) for x in ["^", ".*"]]):
+                    regex_str = rf".*{regex_str}"
+                if not any([f.endswith(x) for x in ["$", ".*"]]):
+                    regex_str = rf"{regex_str}.*"
                 self.filename_filters.append(re.compile(regex_str, re.I))
             except re.error as e:
                 log.error(f'Unsupported filename regex "{f}": {e}')
                 sleep(1)
         if self.filename_filters:
             filename_filter_str = '"' + '", "'.join([f.pattern for f in self.filename_filters]) + '"'
-            log.info(f'Searching by filename: {filename_filter_str}')
-
+            log.info(f"Searching by filename: {filename_filter_str}")
 
     def check_spiderling_queue(self):
-        '''
+        """
         Empty the spiderling queue
-        '''
+        """
 
         while 1:
             try:
@@ -170,42 +162,39 @@ class MANSPIDER:
             except queue.Empty:
                 break
 
-
     def process_message(self, message):
-        '''
+        """
         Process messages from spiderlings
         Log messages, errors, files, etc.
-        '''
-        if message.type == 'a':
+        """
+        if message.type == "a":
             if message.content == False:
                 self.failed_logons += 1
             if self.lockout_threshold():
-                log.error(f'REACHED MAXIMUM FAILED LOGONS OF {self.max_failed_logons:,}')
-                log.error('KILLING EXISTING SPIDERLINGS AND CONTINUING WITH GUEST/NULL SESSIONS')
-                #for spiderling in self.spiderling_pool:
+                log.error(f"REACHED MAXIMUM FAILED LOGONS OF {self.max_failed_logons:,}")
+                log.error("KILLING EXISTING SPIDERLINGS AND CONTINUING WITH GUEST/NULL SESSIONS")
+                # for spiderling in self.spiderling_pool:
                 #    spiderling.kill()
-                self.username = ''
-                self.password = ''
-                self.nthash = ''
-                self.domain = ''
-
+                self.username = ""
+                self.password = ""
+                self.nthash = ""
+                self.domain = ""
 
     def lockout_threshold(self):
-        '''
+        """
         Return True if we've reached max failed logons
-        '''
+        """
 
         if self.max_failed_logons is not None:
             if self.failed_logons >= self.max_failed_logons and self.domain:
                 return True
         return False
 
-
     def get_smb_client(self, target):
-        '''
+        """
         Check if we already have an smb_client cached
         If not, then create it
-        '''
+        """
 
         smb_client = self.smb_client_cache.get(target, None)
 

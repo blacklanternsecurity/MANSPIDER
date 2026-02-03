@@ -8,12 +8,13 @@ import ipaddress
 from pathlib import Path
 from dataclasses import dataclass
 
-log = logging.getLogger('manspider.util')
+log = logging.getLogger("manspider.util")
 
 
 @dataclass
 class Target:
     """Represents a target host with optional port."""
+
     host: str
     port: int = 445
 
@@ -38,20 +39,20 @@ def parse_host_port(s):
     Handles IPv6 addresses in brackets: [::1]:445
     """
     # IPv6 with port: [::1]:445
-    ipv6_match = re.match(r'^\[([^\]]+)\]:(\d+)$', s)
+    ipv6_match = re.match(r"^\[([^\]]+)\]:(\d+)$", s)
     if ipv6_match:
         return ipv6_match.group(1), int(ipv6_match.group(2))
 
     # IPv6 without port: [::1] or ::1
-    if s.startswith('[') and s.endswith(']'):
+    if s.startswith("[") and s.endswith("]"):
         return s[1:-1], 445
-    if ':' in s and s.count(':') > 1:
+    if ":" in s and s.count(":") > 1:
         # Plain IPv6 address (multiple colons, no port)
         return s, 445
 
     # IPv4/hostname with port: 192.168.1.1:445 or host.com:445
-    if ':' in s:
-        host, port_str = s.rsplit(':', 1)
+    if ":" in s:
+        host, port_str = s.rsplit(":", 1)
         try:
             return host, int(port_str)
         except ValueError:
@@ -79,17 +80,17 @@ def str_to_list(s):
 
 
 def make_targets(s):
-    '''
+    """
     Accepts filename, CIDR, IP, hostname, file, or folder
     Supports host:port syntax (e.g., 192.168.1.1:4455)
     Returns list of targets as Target objects or Path() objects
-    '''
+    """
 
     targets = set()
 
     p = Path(s)
-    if s.lower() == 'loot':
-        targets.add(Path.home() / '.manspider' / 'loot')
+    if s.lower() == "loot":
+        targets.add(Path.home() / ".manspider" / "loot")
 
     elif p.is_dir():
         targets.add(p)
@@ -110,20 +111,20 @@ def make_targets(s):
 
 
 def human_to_int(h):
-    '''
+    """
     converts human-readable number to integer
     e.g. 1K --> 1000
-    '''
+    """
 
     if type(h) == int:
         return h
 
-    units = {'': 1, 'K': 1024, 'M': 1024**2, 'G': 1024**3, 'T': 1024**4}
+    units = {"": 1, "K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4}
 
     try:
         h = h.upper().strip()
-        i = float(''.join(c for c in h if c in string.digits + '.'))
-        unit = ''.join([c for c in h if c in units.keys()])
+        i = float("".join(c for c in h if c in string.digits + "."))
+        unit = "".join([c for c in h if c in units.keys()])
     except (ValueError, KeyError):
         raise ValueError(f'Invalid filesize "{h}"')
 
@@ -131,25 +132,25 @@ def human_to_int(h):
 
 
 def bytes_to_human(_bytes):
-    '''
+    """
     converts bytes to human-readable filesize
     e.g. 1024 --> 1KB
-    '''
+    """
 
-    sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB']
+    sizes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"]
     units = {}
     count = 0
     for size in sizes:
         units[size] = pow(1024, count)
-        count +=1
+        count += 1
 
     for size in sizes:
         if abs(_bytes) < 1024.0:
             if size == sizes[0]:
                 _bytes = str(int(_bytes))
             else:
-                _bytes = '{:.2f}'.format(_bytes)
-            return '{}{}'.format(_bytes, size)
+                _bytes = "{:.2f}".format(_bytes)
+            return "{}{}".format(_bytes, size)
         _bytes /= 1024
 
     raise ValueError
@@ -169,7 +170,9 @@ def better_decode(b):
 
 def random_string(length):
 
-    return ''.join(random.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for i in range(length))
+    return "".join(
+        random.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for i in range(length)
+    )
 
 
 def list_files(path):
@@ -188,9 +191,9 @@ def list_files(path):
 
 
 def rmdir(directory):
-    '''
+    """
     Recursively remove directory
-    '''
+    """
     directory = Path(directory)
     for item in directory.iterdir():
         if item.is_dir():
