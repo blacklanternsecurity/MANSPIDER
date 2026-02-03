@@ -1,13 +1,7 @@
 # MANSPIDER
 ### Crawl SMB shares for juicy information. File content searching + regex is supported!
 
-### UPDATE 2025-07-31
-
-We're aware of a [bug](https://github.com/blacklanternsecurity/MANSPIDER/issues/56) in **extractous** causing errors in MANSPIDER's text extraction. If you're affected by this bug, you can use the legacy Docker image at [`blacklanternsecurity/manspider:legacy`](https://hub.docker.com/layers/blacklanternsecurity/manspider/legacy/images/sha256-9c9c355223dc87731db8bbe3e3c3976cbe3f62a17defbed4a3c1e1c2ce918494), which uses the old `textract` library instead.
-
-### UPDATE 2025-05-26
-
-**Manspider has been updated to support kerberos!** Also, the textract library has been replaced with [Extractous](https://github.com/yobix-ai/extractous), so you can now feel free to run it outside Docker. 🎉
+**Manspider supports kerberos!** Text extraction is powered by [Kreuzberg](https://github.com/Goldziher/kreuzberg).
 
 ![manspider](https://user-images.githubusercontent.com/20261699/74963251-6a08de80-53df-11ea-88f4-60c39665dfa2.gif)
 
@@ -22,19 +16,35 @@ We're aware of a [bug](https://github.com/blacklanternsecurity/MANSPIDER/issues/
 ### MANSPIDER will crawl every share on every target system. If provided creds don't work, it will fall back to "guest", then to a null session.
 ![manspider](https://user-images.githubusercontent.com/20261699/80316979-f9ab7e80-87ce-11ea-9628-3c22a07e8378.png)
 
-### Installation:
-(Optional) Install these dependencies to add additional file parsing capability:
-~~~
-# for images (png, jpeg)
-$ sudo apt install tesseract-ocr
+### Installation
 
-# for legacy document support (.doc)
-$ sudo apt install antiword
+#### Quick Run with uvx (recommended)
+~~~bash
+# Run directly without installing
+uvx --from git+https://github.com/blacklanternsecurity/MANSPIDER manspider --help
 ~~~
-Install manspider (please be patient, this can take a while):
+
+#### Install with uv
+~~~bash
+# Install globally
+uv tool install git+https://github.com/blacklanternsecurity/MANSPIDER
+
+# Run
+manspider --help
 ~~~
-$ pip install pipx
-$ pipx install git+https://github.com/blacklanternsecurity/MANSPIDER
+
+#### Install with pipx
+~~~bash
+pipx install git+https://github.com/blacklanternsecurity/MANSPIDER
+~~~
+
+#### Optional Dependencies
+~~~bash
+# for OCR on images (png, jpeg)
+sudo apt install tesseract-ocr
+
+# for legacy .doc support (kreuzberg uses libreoffice)
+sudo apt install libreoffice
 ~~~
 
 ## Installation (Docker)
