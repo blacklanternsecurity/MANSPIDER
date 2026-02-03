@@ -15,9 +15,10 @@ class SMBClient:
     Wrapper around impacket's SMBConnection() object
     '''
 
-    def __init__(self, server, username, password, domain, nthash, use_kerberos=False, aes_key="", dc_ip=None):
+    def __init__(self, server, username, password, domain, nthash, use_kerberos=False, aes_key="", dc_ip=None, port=445):
 
         self.server = server
+        self.port = port
 
         self.conn = None
 
@@ -75,7 +76,7 @@ class SMBClient:
                 self.server,
                 self.server,
                 None,
-                445,
+                self.port,
                 timeout=10,
             )
             with suppress(Exception):
@@ -127,7 +128,7 @@ class SMBClient:
 
         if self.conn is None or refresh:
             try:
-                self.conn = SMBConnection(target_server, target_server, sess_port=445, timeout=20)
+                self.conn = SMBConnection(target_server, target_server, sess_port=self.port, timeout=20)
             except Exception as e:
                 log.debug(impacket_error(e))
                 return None

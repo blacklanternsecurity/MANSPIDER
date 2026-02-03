@@ -4,11 +4,55 @@ import logging
 from time import sleep
 import subprocess as sp
 from kreuzberg import extract_file_sync
+from charset_normalizer import from_path
 
 from man_spider.lib.util import *
 from man_spider.lib.logger import *
 
 log = logging.getLogger('manspider.parser')
+
+
+def is_text_file(filepath):
+    """Detect if file is plain text using charset-normalizer."""
+    result = from_path(filepath)
+    best = result.best()
+    # Only consider it a text file if we have high confidence
+    # and the encoding is detected (not binary)
+    return best is not None and best.encoding is not None
+
+
+def extract_text_file(filepath):
+    """Extract text from plain text file, auto-detecting encoding."""
+    result = from_path(filepath)
+    best = result.best()
+    return str(best) if best else None
+
+
+def extract_strings_from_binary(filepath, min_length=4):
+    """
+    Extract printable ASCII strings from a binary file.
+    Similar to the Unix 'strings' command.
+    """
+    import string
+    printable = set(string.printable) - set('\x0b\x0c')  # Exclude vertical tab and form feed
+
+    with open(filepath, 'rb') as f:
+        data = f.read()
+
+    result = []
+    current = []
+    for byte in data:
+        char = chr(byte) if byte < 128 else None
+        if char and char in printable:
+            current.append(char)
+        else:
+            if len(current) >= min_length:
+                result.append(''.join(current))
+            current = []
+    if len(current) >= min_length:
+        result.append(''.join(current))
+
+    return '\n'.join(result)
 
 
 class FileParser:
@@ -129,7 +173,9 @@ class FileParser:
 
     def extract_text(self, file, pretty_filename):
         '''
-        Extracts text from a file using the kreuzberg library
+        Extracts text from a file.
+        Uses charset-normalizer for plain text files (handles UTF-16, etc.)
+        Falls back to kreuzberg for binary formats (docx, pdf, xlsx, etc.)
         '''
 
         matches = dict()
@@ -138,8 +184,23 @@ class FileParser:
         if not self.match_magic(file):
             return matches
 
-        result = extract_file_sync(str(file))
-        text_content = result.content
+        # Try charset-normalizer first for text files (handles UTF-16, etc.)
+        if is_text_file(str(file)):
+            text_content = extract_text_file(str(file))
+            log.debug(f'Extracted text from {pretty_filename} using charset-normalizer')
+        else:
+            # Try kreuzberg for document formats (docx, pdf, xlsx, etc.)
+            try:
+                result = extract_file_sync(str(file))
+                text_content = result.content
+            except Exception as e:
+                # Kreuzberg doesn't support this file type, try extracting raw strings
+                log.debug(f'Kreuzberg failed for {pretty_filename}: {e}, trying string extraction')
+                text_content = extract_strings_from_binary(str(file))
+
+        # Guard against None content
+        if text_content is None:
+            return matches
 
         # try to convert to UTF-8 for grep-friendliness
         try:

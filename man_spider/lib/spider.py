@@ -211,14 +211,15 @@ class MANSPIDER:
 
         if smb_client is None:
             smb_client = SMBClient(
-                target,
+                target.host,
                 self.username,
                 self.password,
                 self.domain,
                 self.nthash,
                 self.use_kerberos,
                 self.aes_key,
-                self.dc_ip
+                self.dc_ip,
+                port=target.port,
             )
             logon_result = smb_client.login()
             if logon_result == False:
