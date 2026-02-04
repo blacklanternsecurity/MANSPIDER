@@ -204,11 +204,28 @@ class Spiderling:
     def shares(self):
         """
         Lists all shares on single target
+        Includes both enumerated shares and user-specified shares (which may be hidden from enumeration)
         """
 
+        # Keep track of shares we've already yielded to avoid duplicates
+        yielded_shares = set()
+
+        # First, yield enumerated shares that match filters
         for share in self.smb_client.shares:
             if self.share_match(share):
+                yielded_shares.add(share.lower())
                 yield share
+
+        # If user specified a share whitelist, also try those shares even if not enumerated
+        # (some shares are hidden from enumeration but still accessible)
+        if self.parent.share_whitelist:
+            for share in self.parent.share_whitelist:
+                if share.lower() not in yielded_shares:
+                    # Check if it's blacklisted
+                    if (not self.parent.share_blacklist) or (share.lower() not in self.parent.share_blacklist):
+                        log.debug(f"{self.target}: Adding non-enumerated share from whitelist: {share}")
+                        yielded_shares.add(share.lower())
+                        yield share
 
     def list_files(self, share, path="", depth=0, tries=2):
         """

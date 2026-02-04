@@ -1,8 +1,8 @@
 import re
-import magic
 import logging
 from time import sleep
 import subprocess as sp
+from pathlib import Path
 from kreuzberg import extract_file_sync
 from charset_normalizer import from_path
 
@@ -57,15 +57,15 @@ def extract_strings_from_binary(filepath, min_length=4):
 
 
 class FileParser:
-    # don't parse files with these magic types
-    magic_blacklist = [
-        # PNG, JPEG, etc.
-        # 'image data',
-        # ZIP, GZ, etc.
-        "archive data",
-        # encrypted data
-        "encrypted",
-    ]
+    # don't parse files with these extensions
+    extension_blacklist = {
+        # Archive formats
+        '.zip', '.gz', '.tar', '.bz2', '.7z', '.rar', '.xz', '.tgz', '.tbz2',
+        # Encrypted/protected formats
+        '.enc', '.gpg', '.pgp', '.asc',
+        # Compiled/binary formats that are rarely useful to parse
+        '.exe', '.dll', '.so', '.dylib',
+    }
 
     def __init__(self, filters, quiet=False):
         self.init_content_filters(filters)
@@ -103,13 +103,12 @@ class FileParser:
         """
         Returns True if the file isn't of a blacklisted file type
         """
+        file_path = Path(file)
+        extension = file_path.suffix.lower()
 
-        # get magic type
-        magic_type = magic.from_file(str(file)).lower()
-        for keyword in self.magic_blacklist:
-            if keyword.lower() in magic_type:
-                log.debug(f'Not parsing {file}: blacklisted magic type: "{keyword}"')
-                return False
+        if extension in self.extension_blacklist:
+            log.debug(f'Not parsing {file}: blacklisted extension: "{extension}"')
+            return False
 
         return True
 

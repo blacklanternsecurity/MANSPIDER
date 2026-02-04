@@ -44,10 +44,23 @@ class SMBClient:
         List shares on the SMB server
         """
         resp = self.conn.listShares()
+        log.debug(f"{self.server}: Response length: {len(resp)}")
         for i in range(len(resp)):
-            sharename = resp[i]["shi1_netname"][:-1]
-            log.debug(f"{self.server}: Found share: {sharename}")
-            yield sharename
+            try:
+                sharename = resp[i]["shi1_netname"].rstrip("\x00")
+                try:
+                    share_type = resp[i]["shi1_type"]
+                except (KeyError, AttributeError):
+                    share_type = "unknown"
+                try:
+                    share_comment = resp[i]["shi1_remark"].rstrip("\x00")
+                except (KeyError, AttributeError):
+                    share_comment = ""
+                log.debug(f"{self.server}: Share {i}: name='{sharename}', type={share_type}, comment='{share_comment}'")
+                yield sharename
+            except Exception as e:
+                log.debug(f"{self.server}: Error processing share {i}: {e}")
+                continue
 
     @property
     def shares(self):

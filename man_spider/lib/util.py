@@ -1,12 +1,12 @@
 import os
 import re
-import magic
 import string
 import random
 import logging
 import ipaddress
 from pathlib import Path
 from dataclasses import dataclass
+from charset_normalizer import from_bytes
 
 log = logging.getLogger("manspider.util")
 
@@ -157,13 +157,18 @@ def bytes_to_human(_bytes):
 
 
 def better_decode(b):
+    """
+    Decode bytes to string using charset-normalizer for encoding detection.
+    """
+    result = from_bytes(b)
+    best = result.best()
 
-    # detect encoding with libmagic
-    m = magic.Magic(mime_encoding=True)
-    encoding = m.from_buffer(b)
+    if best is not None:
+        return str(best)
 
+    # Fallback if no encoding detected
     try:
-        return b.decode(encoding)
+        return b.decode('utf-8', errors='ignore')
     except Exception:
         return str(b)[2:-1]
 

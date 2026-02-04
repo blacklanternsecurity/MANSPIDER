@@ -219,7 +219,16 @@ options:
                         only show files modified before this date (format: YYYY-MM-DD)
 ~~~
 
-## Linting
+## Development
+
+### Testing
+
+```bash
+# Run tests
+uv run pytest
+```
+
+### Linting
 
 This project uses [ruff](https://github.com/astral-sh/ruff) for linting and formatting.
 
