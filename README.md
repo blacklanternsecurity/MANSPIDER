@@ -51,13 +51,19 @@ pipx install git+https://github.com/blacklanternsecurity/MANSPIDER
 ~~~
 
 #### Optional Dependencies
+
+Manspider uses [Kreuzberg](https://github.com/Goldziher/kreuzberg) for text extraction from various file formats. Some formats require additional system dependencies:
+
 ~~~bash
-# for OCR on images (png, jpeg)
+# For OCR text extraction from images (PNG, JPEG, etc.)
 sudo apt install tesseract-ocr
 
-# for legacy .doc support (kreuzberg uses libreoffice)
+# For legacy Microsoft Office format support (.doc, .xls)
+# Kreuzberg uses LibreOffice for conversion
 sudo apt install libreoffice
 ~~~
+
+**Without these dependencies:** Manspider will still work for PDF, DOCX, XLSX, PPTX, and text files, but will skip image OCR and legacy Office formats.
 
 ## Installation (Docker)
 
@@ -234,6 +240,8 @@ options:
 ## Development
 
 ### Testing
+
+**Note:** Running the full test suite requires the optional system dependencies listed above (tesseract-ocr and libreoffice).
 
 ```bash
 # Run tests
