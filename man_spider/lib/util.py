@@ -168,7 +168,7 @@ def better_decode(b):
 
     # Fallback if no encoding detected
     try:
-        return b.decode('utf-8', errors='ignore')
+        return b.decode("utf-8", errors="ignore")
     except Exception:
         return str(b)[2:-1]
 

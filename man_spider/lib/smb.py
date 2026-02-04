@@ -56,7 +56,9 @@ class SMBClient:
                     share_comment = resp[i]["shi1_remark"].rstrip("\x00")
                 except (KeyError, AttributeError):
                     share_comment = ""
-                log.debug(f"{self.server}: Share {i}: name='{sharename}', type={share_type}, comment='{share_comment}'")
+                log.debug(
+                    f"{self.server}: Share {i}: name='{sharename}', type={share_type}, comment='{share_comment}'"
+                )
                 yield sharename
             except Exception as e:
                 log.debug(f"{self.server}: Error processing share {i}: {e}")

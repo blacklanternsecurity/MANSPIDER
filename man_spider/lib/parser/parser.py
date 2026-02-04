@@ -60,11 +60,25 @@ class FileParser:
     # don't parse files with these extensions
     extension_blacklist = {
         # Archive formats
-        '.zip', '.gz', '.tar', '.bz2', '.7z', '.rar', '.xz', '.tgz', '.tbz2',
+        ".zip",
+        ".gz",
+        ".tar",
+        ".bz2",
+        ".7z",
+        ".rar",
+        ".xz",
+        ".tgz",
+        ".tbz2",
         # Encrypted/protected formats
-        '.enc', '.gpg', '.pgp', '.asc',
+        ".enc",
+        ".gpg",
+        ".pgp",
+        ".asc",
         # Compiled/binary formats that are rarely useful to parse
-        '.exe', '.dll', '.so', '.dylib',
+        ".exe",
+        ".dll",
+        ".so",
+        ".dylib",
     }
 
     def __init__(self, filters, quiet=False):
