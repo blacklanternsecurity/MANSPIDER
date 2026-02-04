@@ -1,7 +1,19 @@
 # MANSPIDER
 ### Crawl SMB shares for juicy information. File content searching + regex is supported!
 
-**Manspider supports kerberos!** Text extraction is powered by [Kreuzberg](https://github.com/Goldziher/kreuzberg).
+---
+
+## What's New in v2.0
+
+**Manspider 2.0 is here!** This major release brings significant improvements:
+
+- **Blazing-fast text extraction** powered by [Kreuzberg](https://github.com/Goldziher/kreuzberg) - now supporting PDF, DOCX, XLSX, PPTX, images with OCR, and many more formats
+- **Modern package management** with [uv](https://github.com/astral-sh/uv) for faster, more reliable installations
+- **Python 3.14 support** - ready for the latest Python releases
+- **Date filtering** - search files by modification date with `--modified-after` and `--modified-before`
+- **Comprehensive unit tests** - improved reliability and stability
+
+---
 
 ![manspider](https://user-images.githubusercontent.com/20261699/74963251-6a08de80-53df-11ea-88f4-60c39665dfa2.gif)
 
