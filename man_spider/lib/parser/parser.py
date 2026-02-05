@@ -1,39 +1,94 @@
 import re
-import magic
 import logging
 from time import sleep
 import subprocess as sp
-from extractous import Extractor
+from pathlib import Path
+from kreuzberg import extract_file_sync
+from charset_normalizer import from_path
 
 from man_spider.lib.util import *
 from man_spider.lib.logger import *
 
-log = logging.getLogger('manspider.parser')
+log = logging.getLogger("manspider.parser")
+
+
+def is_text_file(filepath):
+    """Detect if file is plain text using charset-normalizer."""
+    result = from_path(filepath)
+    best = result.best()
+    # Only consider it a text file if we have high confidence
+    # and the encoding is detected (not binary)
+    return best is not None and best.encoding is not None
+
+
+def extract_text_file(filepath):
+    """Extract text from plain text file, auto-detecting encoding."""
+    result = from_path(filepath)
+    best = result.best()
+    return str(best) if best else None
+
+
+def extract_strings_from_binary(filepath, min_length=4):
+    """
+    Extract printable ASCII strings from a binary file.
+    Similar to the Unix 'strings' command.
+    """
+    import string
+
+    printable = set(string.printable) - set("\x0b\x0c")  # Exclude vertical tab and form feed
+
+    with open(filepath, "rb") as f:
+        data = f.read()
+
+    result = []
+    current = []
+    for byte in data:
+        char = chr(byte) if byte < 128 else None
+        if char and char in printable:
+            current.append(char)
+        else:
+            if len(current) >= min_length:
+                result.append("".join(current))
+            current = []
+    if len(current) >= min_length:
+        result.append("".join(current))
+
+    return "\n".join(result)
 
 
 class FileParser:
-
-    # don't parse files with these magic types
-    magic_blacklist = [
-        # PNG, JPEG, etc.
-        # 'image data',
-        # ZIP, GZ, etc.
-        'archive data',
-        # encrypted data
-        'encrypted'
-    ]
-
+    # don't parse files with these extensions
+    extension_blacklist = {
+        # Archive formats
+        ".zip",
+        ".gz",
+        ".tar",
+        ".bz2",
+        ".7z",
+        ".rar",
+        ".xz",
+        ".tgz",
+        ".tbz2",
+        # Encrypted/protected formats
+        ".enc",
+        ".gpg",
+        ".pgp",
+        ".asc",
+        # Compiled/binary formats that are rarely useful to parse
+        ".exe",
+        ".dll",
+        ".so",
+        ".dylib",
+    }
 
     def __init__(self, filters, quiet=False):
         self.init_content_filters(filters)
-        self.extractor = Extractor()
         self.quiet = quiet
 
-
     def init_content_filters(self, file_content):
-        '''
+        """
         Get ready to search by file content
-        '''
+        """
 
         # strings to look for in file content
         # if empty, content is ignored
@@ -46,41 +101,36 @@ class FileParser:
                 sleep(1)
         if self.content_filters:
             content_filter_str = '"' + '", "'.join([f.pattern for f in self.content_filters]) + '"'
-            log.info(f'Searching by file content: {content_filter_str}')
-
-
+            log.info(f"Searching by file content: {content_filter_str}")
 
     def match(self, file_content):
-        '''
+        """
         Finds all regex matches in file content
-        '''
+        """
 
         for _filter in self.content_filters:
             for match in _filter.finditer(file_content):
                 # ( filter, (match_start_index, match_end_index) )
                 yield (_filter, match.span())
 
-
     def match_magic(self, file):
-        '''
+        """
         Returns True if the file isn't of a blacklisted file type
-        '''
+        """
+        file_path = Path(file)
+        extension = file_path.suffix.lower()
 
-        # get magic type
-        magic_type = magic.from_file(str(file)).lower()
-        for keyword in self.magic_blacklist:
-            if keyword.lower() in magic_type:
-                log.debug(f'Not parsing {file}: blacklisted magic type: "{keyword}"')
-                return False
+        if extension in self.extension_blacklist:
+            log.debug(f'Not parsing {file}: blacklisted extension: "{extension}"')
+            return False
 
         return True
-
 
     def grep(self, content, pattern):
 
         if not self.quiet:
             try:
-                '''
+                """
                 GREP(1)
                     -E, --extended-regexp
                         Interpret PATTERN as an extended regular expression
@@ -90,11 +140,9 @@ class FileParser:
                         Process a binary file as if it were text
                     -m NUM, --max-count=NUM
                         Stop  reading  a file after NUM matching lines
-                '''
+                """
                 grep_process = sp.Popen(
-                    ['grep', '-Eiam', '5', '--color=always', pattern],
-                    stdin=sp.PIPE,
-                    stdout=sp.PIPE
+                    ["grep", "-Eiam", "5", "--color=always", pattern], stdin=sp.PIPE, stdout=sp.PIPE
                 )
                 grep_output = grep_process.communicate(content)[0]
                 for line in grep_output.splitlines():
@@ -102,50 +150,63 @@ class FileParser:
             except (sp.SubprocessError, OSError, IndexError):
                 pass
 
-
     def parse_file(self, file, pretty_filename=None):
-        '''
+        """
         Parse a file on the local filesystem
-        '''
+        """
 
         if pretty_filename is None:
             pretty_filename = str(file)
 
-        log.debug(f'Parsing file: {pretty_filename}')
+        log.debug(f"Parsing file: {pretty_filename}")
 
         matches = dict()
 
         try:
-
-            matches = self.extractous(file, pretty_filename=pretty_filename)
+            matches = self.extract_text(file, pretty_filename=pretty_filename)
 
         except Exception as e:
             if log.level <= logging.DEBUG:
-                log.warning(f'Error extracting text from {pretty_filename}: {e}')
+                log.warning(f"Error extracting text from {pretty_filename}: {e}")
             else:
-                log.warning(f'Error extracting text from {pretty_filename} (-v to debug)')
-            
+                log.warning(f"Error extracting text from {pretty_filename} (-v to debug)")
+
         return matches
 
-
-    def extractous(self, file, pretty_filename):
-        '''
-        Extracts text from a file using the extractous library
-        '''
+    def extract_text(self, file, pretty_filename):
+        """
+        Extracts text from a file.
+        Uses charset-normalizer for plain text files (handles UTF-16, etc.)
+        Falls back to kreuzberg for binary formats (docx, pdf, xlsx, etc.)
+        """
 
         matches = dict()
-
-        suffix = Path(str(file)).suffix.lower()
 
         # blacklist certain mime types
         if not self.match_magic(file):
             return matches
 
-        text_content, metadata = self.extractor.extract_file_to_string(str(file))
+        # Try charset-normalizer first for text files (handles UTF-16, etc.)
+        if is_text_file(str(file)):
+            text_content = extract_text_file(str(file))
+            log.debug(f"Extracted text from {pretty_filename} using charset-normalizer")
+        else:
+            # Try kreuzberg for document formats (docx, pdf, xlsx, etc.)
+            try:
+                result = extract_file_sync(str(file))
+                text_content = result.content
+            except Exception as e:
+                # Kreuzberg doesn't support this file type, try extracting raw strings
+                log.debug(f"Kreuzberg failed for {pretty_filename}: {e}, trying string extraction")
+                text_content = extract_strings_from_binary(str(file))
+
+        # Guard against None content
+        if text_content is None:
+            return matches
 
         # try to convert to UTF-8 for grep-friendliness
         try:
-            binary_content = text_content.encode('utf-8', errors='ignore')
+            binary_content = text_content.encode("utf-8", errors="ignore")
         except Exception:
             pass
 

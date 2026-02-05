@@ -1,13 +1,19 @@
 # MANSPIDER
 ### Crawl SMB shares for juicy information. File content searching + regex is supported!
 
-### UPDATE 2025-07-31
+---
 
-We're aware of a [bug](https://github.com/blacklanternsecurity/MANSPIDER/issues/56) in **extractous** causing errors in MANSPIDER's text extraction. If you're affected by this bug, you can use the legacy Docker image at [`blacklanternsecurity/manspider:legacy`](https://hub.docker.com/layers/blacklanternsecurity/manspider/legacy/images/sha256-9c9c355223dc87731db8bbe3e3c3976cbe3f62a17defbed4a3c1e1c2ce918494), which uses the old `textract` library instead.
+## What's New in v2.0
 
-### UPDATE 2025-05-26
+**Manspider 2.0 is here!** This brings significant improvements:
 
-**Manspider has been updated to support kerberos!** Also, the textract library has been replaced with [Extractous](https://github.com/yobix-ai/extractous), so you can now feel free to run it outside Docker. 🎉
+- **New and improved text extraction** powered by [Kreuzberg](https://github.com/Goldziher/kreuzberg) - now supporting PDF, DOCX, XLSX, PPTX, images with OCR, and many more formats
+- **Modern package management** with [uv](https://github.com/astral-sh/uv) for faster, more reliable installations
+- **Python 3.14 support** - ready for the latest Python releases
+- **Date filtering** - search files by modification date with `--modified-after` and `--modified-before`
+- **Comprehensive unit tests** - improved reliability and stability
+
+---
 
 ![manspider](https://user-images.githubusercontent.com/20261699/74963251-6a08de80-53df-11ea-88f4-60c39665dfa2.gif)
 
@@ -22,20 +28,42 @@ We're aware of a [bug](https://github.com/blacklanternsecurity/MANSPIDER/issues/
 ### MANSPIDER will crawl every share on every target system. If provided creds don't work, it will fall back to "guest", then to a null session.
 ![manspider](https://user-images.githubusercontent.com/20261699/80316979-f9ab7e80-87ce-11ea-9628-3c22a07e8378.png)
 
-### Installation:
-(Optional) Install these dependencies to add additional file parsing capability:
-~~~
-# for images (png, jpeg)
-$ sudo apt install tesseract-ocr
+### Installation
 
-# for legacy document support (.doc)
-$ sudo apt install antiword
+#### Quick Run with uvx (recommended)
+~~~bash
+# Run directly without installing
+uvx --from git+https://github.com/blacklanternsecurity/MANSPIDER manspider --help
 ~~~
-Install manspider (please be patient, this can take a while):
+
+#### Install with uv
+~~~bash
+# Install globally
+uv tool install git+https://github.com/blacklanternsecurity/MANSPIDER
+
+# Run
+manspider --help
 ~~~
-$ pip install pipx
-$ pipx install git+https://github.com/blacklanternsecurity/MANSPIDER
+
+#### Install with pipx
+~~~bash
+pipx install git+https://github.com/blacklanternsecurity/MANSPIDER
 ~~~
+
+#### Optional Dependencies
+
+Manspider uses [Kreuzberg](https://github.com/Goldziher/kreuzberg) for text extraction from various file formats. Some formats require additional system dependencies:
+
+~~~bash
+# For OCR text extraction from images (PNG, JPEG, etc.)
+sudo apt install tesseract-ocr
+
+# For legacy Microsoft Office format support (.doc, .xls)
+# Kreuzberg uses LibreOffice for conversion
+sudo apt install libreoffice
+~~~
+
+**Without these dependencies:** Manspider will still work for PDF, DOCX, XLSX, PPTX, and text files, but will skip image OCR and legacy Office formats.
 
 ## Installation (Docker)
 
@@ -208,3 +236,29 @@ options:
   --modified-before DATE
                         only show files modified before this date (format: YYYY-MM-DD)
 ~~~
+
+## Development
+
+### Testing
+
+**Note:** Running the full test suite requires the optional system dependencies listed above (tesseract-ocr and libreoffice).
+
+```bash
+# Run tests
+uv run pytest tests/
+```
+
+### Linting
+
+This project uses [ruff](https://github.com/astral-sh/ruff) for linting and formatting.
+
+```bash
+# Run linter
+uv run ruff check .
+
+# Run linter with auto-fix
+uv run ruff check --fix .
+
+# Run formatter
+uv run ruff format .
+```

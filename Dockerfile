@@ -1,10 +1,26 @@
-FROM python:3.10
+FROM python:3.12-slim
 
-RUN apt-get update && apt-get install -y krb5-user tesseract-ocr antiword
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    krb5-user \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-osd \
+    libreoffice \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY . /manspider
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Set working directory
 WORKDIR /manspider
 
-RUN pip install .
+# Copy project files
+COPY pyproject.toml uv.lock README.md ./
+COPY man_spider ./man_spider
 
-ENTRYPOINT ["manspider"]
+# Install the package with uv
+RUN uv sync --frozen --no-dev
+
+ENTRYPOINT [".venv/bin/manspider"]
