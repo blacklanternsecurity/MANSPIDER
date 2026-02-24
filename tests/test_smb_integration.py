@@ -392,7 +392,4 @@ class TestMANSPIDER:
 
         # We do NOT expect to find files that live only at the share root (test-ascii.txt)
         found_root = self._find_matching_files(loot_dir, ["testascii"], ".txt")
-        assert not found_root, (
-            "Did not expect to crawl files at the share root when a specific start path is set"
-        )
-
+        assert not found_root, "Did not expect to crawl files at the share root when a specific start path is set"

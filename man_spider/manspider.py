@@ -207,7 +207,7 @@ def main():
         type=str,
         default="",
         metavar="PATH",
-        help="start crawling from this path within each share (e.g. \"\\\\windows$\\\\users\\\\john\")",
+        help='start crawling from this path within each share (e.g. "\\\\windows$\\\\users\\\\john")',
     )
 
     syntax_error = False
