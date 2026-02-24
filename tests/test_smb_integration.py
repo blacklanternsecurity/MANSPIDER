@@ -174,6 +174,7 @@ def create_test_options(targets, loot_dir, **kwargs) -> Namespace:
         "kerberos": False,
         "aes_key": None,
         "dc_ip": None,
+        "start_path": None,
     }
     defaults.update(kwargs)
     return Namespace(**defaults)
@@ -333,3 +334,65 @@ class TestMANSPIDER:
         found = self._find_matching_files(loot_dir, self.EXPECTED_BINARY_PATTERNS, ".bin")
         missing = set(self.EXPECTED_BINARY_PATTERNS) - found
         assert not missing, f"Missing binary patterns: {missing}. Found: {list(loot_dir.rglob('*.bin'))}"
+
+    def test_manspider_can_start_from_specific_path(self, smb_server_full, tmp_path):
+        """
+        MANSPIDER should be able to start crawling from a specific path
+        within a share, instead of always starting at the share root.
+
+        This models a UNC-like path such as:
+            \\\\share.evilcorp.local\\windows$\\users\\john\\
+
+        For the test SMB server, we simulate this by creating a nested
+        directory structure under the single test share and verifying
+        that only files under the specified start path are crawled.
+        """
+        from man_spider.lib.spider import MANSPIDER
+
+        server, share_path = smb_server_full
+        loot_dir = tmp_path / "loot"
+        loot_dir.mkdir()
+
+        # Create nested directory structure: windows/users/john
+        nested_dir = share_path / "windows" / "users" / "john"
+        nested_dir.mkdir(parents=True, exist_ok=True)
+
+        # Move one known text file into the nested directory
+        # and leave another at the share root as a control.
+        root_text_file = share_path / "test-ascii.txt"
+        nested_text_file = share_path / "test-utf8.txt"
+
+        if nested_text_file.exists():
+            shutil.move(str(nested_text_file), nested_dir / nested_text_file.name)
+
+        target = Target("127.0.0.1", server.port)
+
+        options = create_test_options(
+            targets=[target],
+            loot_dir=loot_dir,
+            content=["Password123"],
+            extensions=[".txt"],
+            # Future behavior: start crawling from a specific path within the share.
+            # In a real CLI invocation this would look like combining:
+            #   --sharenames windows$
+            #   --start-path \\users\\john
+            # Here we capture the desired semantics in the options object.
+            sharenames=["testshare"],
+            start_path="\\windows\\users\\john",
+        )
+
+        spider = MANSPIDER(options)
+        spider.start()
+
+        # We expect to find files under the nested path (test-utf8.txt)
+        found_nested = self._find_matching_files(loot_dir, ["testutf8.txt"], ".txt")
+        assert "testutf8.txt" in found_nested, (
+            "Expected to find test-utf8.txt when starting from \\windows\\users\\john"
+        )
+
+        # We do NOT expect to find files that live only at the share root (test-ascii.txt)
+        found_root = self._find_matching_files(loot_dir, ["testascii"], ".txt")
+        assert not found_root, (
+            "Did not expect to crawl files at the share root when a specific start path is set"
+        )
+

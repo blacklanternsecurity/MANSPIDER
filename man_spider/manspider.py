@@ -202,6 +202,13 @@ def main():
         metavar="DATE",
         help="only show files modified before this date (format: YYYY-MM-DD)",
     )
+    parser.add_argument(
+        "--start-path",
+        type=str,
+        default="",
+        metavar="PATH",
+        help="start crawling from this path within each share (e.g. \"\\\\windows$\\\\users\\\\john\")",
+    )
 
     syntax_error = False
     try:
@@ -256,6 +263,14 @@ def main():
         # lowercase directory names
         options.dirnames = [s.lower() for s in options.dirnames]
         options.exclude_dirnames = [s.lower() for s in options.exclude_dirnames]
+
+        # normalize start_path: use backslashes and strip trailing slashes
+        if getattr(options, "start_path", ""):
+            # Replace forward slashes with backslashes and remove trailing slashes
+            normalized = options.start_path.replace("/", "\\").rstrip("\\")
+            options.start_path = normalized
+        else:
+            options.start_path = None
 
         # deduplicate targets
         targets = set()
