@@ -16,6 +16,34 @@ from man_spider.lib.processpool import *
 log = logging.getLogger("manspider.spiderling")
 
 
+# Directories to skip in --noise-filter moderate mode
+NOISE_DIRS_MODERATE = [
+    "policydefinitions",  # Group Policy ADMX/ADML templates (all language variants)
+    "winsxs",             # Windows component store (huge, system-only)
+    "servicing",          # Windows Update staging area
+]
+
+# Additional directories skipped in --noise-filter aggressive mode
+NOISE_DIRS_AGGRESSIVE = NOISE_DIRS_MODERATE + [
+    "\\windows\\system32",
+    "\\windows\\syswow64",
+    "\\windows\\assembly",
+    "\\windows\\fonts",
+    "\\windows\\spool",
+    "windows defender",
+]
+
+# File extensions suppressed by --noise-filter (both modes)
+NOISE_EXTENSIONS = [
+    ".adml",      # Group Policy Administrative Template Language files
+    ".admx",      # Group Policy Administrative Template XML files
+    ".mui",       # Multilingual User Interface resource files
+    ".mof",       # Managed Object Format (WMI definitions)
+    ".cat",       # Windows security catalog files
+    ".manifest",  # Windows assembly manifest files
+]
+
+
 class SpiderlingMessage:
     """
     Message which gets sent back to the parent through parent_queue
