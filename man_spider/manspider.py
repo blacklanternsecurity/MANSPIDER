@@ -191,6 +191,17 @@ def main():
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="show debugging messages")
     parser.add_argument(
+        "--noise-filter",
+        choices=["moderate", "aggressive"],
+        default=None,
+        metavar="MODE",
+        help=(
+            "filter out common Windows system noise to reduce clutter. "
+            "moderate: skips PolicyDefinitions, WinSxS, Servicing + .adml/.admx/.mui/.mof/.cat/.manifest files. "
+            "aggressive: also skips System32, SysWOW64, Assembly, Fonts, Spool, Windows Defender."
+        ),
+    )
+    parser.add_argument(
         "--modified-after",
         type=str,
         metavar="DATE",
@@ -256,6 +267,15 @@ def main():
         # lowercase directory names
         options.dirnames = [s.lower() for s in options.dirnames]
         options.exclude_dirnames = [s.lower() for s in options.exclude_dirnames]
+
+        # apply built-in noise filter presets
+        if options.noise_filter:
+            from man_spider.lib.spiderling import NOISE_DIRS_MODERATE, NOISE_DIRS_AGGRESSIVE, NOISE_EXTENSIONS
+            noise_dirs = NOISE_DIRS_MODERATE if options.noise_filter == "moderate" else NOISE_DIRS_AGGRESSIVE
+            options.exclude_dirnames = list(set(options.exclude_dirnames + [d.lower() for d in noise_dirs]))
+            # ensure extension format is correct (dot prefix)
+            noise_exts = [e if e.startswith(".") else f".{e}" for e in NOISE_EXTENSIONS]
+            options.exclude_extensions = list(set(options.exclude_extensions + noise_exts))
 
         # deduplicate targets
         targets = set()
