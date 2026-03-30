@@ -24,8 +24,23 @@ jobs:
           owner: blacklanternsecurity
           repositories: CLA
 
+      - name: Check org membership
+        id: membership
+        if: github.event_name == 'pull_request_target'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          if gh api "orgs/blacklanternsecurity/members/$AUTHOR" > /dev/null 2>&1; then
+            echo "is_member=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_member=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: "CLA Assistant"
-        if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA') || github.event_name == 'pull_request_target'
+        if: |
+          (steps.membership.outputs.is_member != 'true') &&
+          ((github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA') || github.event_name == 'pull_request_target')
         uses: contributor-assistant/github-action@v2.6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -34,6 +49,6 @@ jobs:
           path-to-signatures: "signatures/version1/cla.json"
           path-to-document: "https://github.com/blacklanternsecurity/CLA/blob/main/ICLA.md"
           branch: "main"
-          allowlist: "dependabot[bot],github-actions[bot],renovate[bot],aconite33,adeemm,ausmaster,bbot-deploy,blsaccess,blscode,en0f,GabKodes,holsick,jackpas23,kerrymilan,kevinoriley,liquidsec,lunarcowboy,MarcusAmes,Mercury0,MrBlackout20,Nasaltron,oversiemulated,pentestpop,pjhartlieb,RReski,shart123456,SpamFaux,stryker2k2,Sw3d1shPh1sh,TheFunky1Markimark,theo2612,TheTechromancer,TMDeal"
+          allowlist: "dependabot[bot],github-actions[bot],renovate[bot]"
           remote-organization-name: "blacklanternsecurity"
           remote-repository-name: "CLA"
