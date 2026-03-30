@@ -34,6 +34,6 @@ jobs:
           path-to-signatures: "signatures/version1/cla.json"
           path-to-document: "https://github.com/blacklanternsecurity/CLA/blob/main/ICLA.md"
           branch: "main"
-          allowlist: "dependabot[bot],github-actions[bot],renovate[bot]"
+          allowlist: "dependabot[bot],github-actions[bot],renovate[bot],aconite33,adeemm,ausmaster,bbot-deploy,blsaccess,blscode,en0f,GabKodes,holsick,jackpas23,kerrymilan,kevinoriley,liquidsec,lunarcowboy,MarcusAmes,Mercury0,MrBlackout20,Nasaltron,oversiemulated,pentestpop,pjhartlieb,RReski,shart123456,SpamFaux,stryker2k2,Sw3d1shPh1sh,TheFunky1Markimark,theo2612,TheTechromancer,TMDeal"
           remote-organization-name: "blacklanternsecurity"
           remote-repository-name: "CLA"
