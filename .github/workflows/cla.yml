@@ -22,20 +22,33 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: blacklanternsecurity
-          repositories: CLA
 
       - name: Check org membership
         id: membership
-        if: github.event_name == 'pull_request_target'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          AUTHOR="${{ github.event.pull_request.user.login }}"
-          if gh api "orgs/blacklanternsecurity/members/$AUTHOR" > /dev/null 2>&1; then
+          if [ "${{ github.event_name }}" = "pull_request_target" ]; then
+            AUTHOR="${{ github.event.pull_request.user.login }}"
+          else
+            PR_NUM="${{ github.event.issue.number }}"
+            AUTHOR=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM" --jq '.user.login' 2>/dev/null)
+          fi
+          if [ -n "$AUTHOR" ] && gh api "orgs/blacklanternsecurity/members/$AUTHOR" > /dev/null 2>&1; then
             echo "is_member=true" >> "$GITHUB_OUTPUT"
           else
             echo "is_member=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Skip CLA for org members
+        if: steps.membership.outputs.is_member == 'true' && github.event_name == 'pull_request_target'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+            -f state=success \
+            -f context="CLAAssistant" \
+            -f description="CLA check skipped — author is an org member"
 
       - name: "CLA Assistant"
         if: |
