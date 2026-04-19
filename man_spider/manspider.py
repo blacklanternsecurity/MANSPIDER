@@ -60,6 +60,24 @@ def go(options):
         pass
 
 
+def load_content_wordlist(filepath, options):
+    """Read a plain wordlist (one word/phrase per line) and append each entry to options.content."""
+    wordlist_path = pathlib.Path(filepath)
+    if not wordlist_path.exists():
+        log.error(f"Wordlist file not found: {filepath}")
+        sys.exit(1)
+
+    words = [line.strip() for line in wordlist_path.open() if line.strip() and not line.startswith("#")]
+
+    if not words:
+        log.error(f"Wordlist file is empty: {filepath}")
+        sys.exit(1)
+
+    log.info(f"Loaded {len(words)} words from {filepath}")
+    options.content = list(options.content) + words
+    return options
+
+
 def main():
 
     interrupted = False
@@ -191,6 +209,12 @@ def main():
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="show debugging messages")
     parser.add_argument(
+        "--wordlist",
+        default=None,
+        metavar="FILE",
+        help="path to a wordlist file (one word per line) to search for in file contents",
+    )
+    parser.add_argument(
         "--modified-after",
         type=str,
         metavar="DATE",
@@ -210,6 +234,9 @@ def main():
             sys.exit(1)
 
         options = parser.parse_args()
+
+        if options.wordlist:
+            options = load_content_wordlist(options.wordlist, options)
 
         if options.verbose:
             log.setLevel("DEBUG")
