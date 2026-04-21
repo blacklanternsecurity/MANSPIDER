@@ -35,6 +35,11 @@ class MANSPIDER:
         self.dir_whitelist = options.dirnames
         self.dir_blacklist = options.exclude_dirnames
 
+        # Optional starting path within each share (for remote SMB targets only).
+        # When set, spiderlings will begin crawling from this path instead of
+        # the share root (e.g. "\\windows\\users\\john").
+        self.start_path = getattr(options, "start_path", None)
+
         self.no_download = options.no_download
 
         # applies "or" logic instead of "and"

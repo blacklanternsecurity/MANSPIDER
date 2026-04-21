@@ -149,6 +149,12 @@ $ manspider share.evilcorp.local -e pfx p12 pkcs12 pem key crt cer csr jks keyst
 $ manspider share.evilcorp.local -e docx xlsx pdf --modified-after 2026-01-01 -d evilcorp -u bob -p Passw0rd
 ~~~
 
+### Example #11: Start crawling from a specific path
+~~~
+$ manspider share.evilcorp.local --sharenames windows$ --start-path \\users\\john -c passw -e docx pdf -d evilcorp -u bob -p Passw0rd
+~~~
+This will only crawl files under `\\windows$\\users\\john` on `share.evilcorp.local`, instead of starting at the root of the `windows$` share.
+
 ### Usage Tip #1:
 You can run multiple instances of manspider at one time. This is useful when one instance is already running, and you want to search what it's downloaded (similar to `grep -R`). To do this, specify the keyword `loot` as the target, which will search the downloaded files in `$HOME/.manspider/loot`.
 

@@ -166,8 +166,13 @@ class Spiderling:
                     log.debug(f"Skipping {file}: does not match filename/extension filters")
 
         else:
+            # remote files
+            # If a specific start path is configured, begin crawling from that
+            # subdirectory within each share instead of the share root.
+            start_path = getattr(self.parent, "start_path", None) or ""
+
             for share in self.shares:
-                for remote_file in self.list_files(share):
+                for remote_file in self.list_files(share, start_path):
                     if not self.parent.no_download or self.parent.parser.content_filters:
                         self.get_file(remote_file)
                     yield remote_file
