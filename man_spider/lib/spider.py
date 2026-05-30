@@ -23,7 +23,7 @@ class MANSPIDER:
         self.password = options.password
         self.domain = options.domain
         self.nthash = options.hash
-        self.use_kerberos = options.kerberos
+        self.use_kerberos = options.kerberos or bool(options.aes_key)
         self.aes_key = options.aes_key
         self.dc_ip = options.dc_ip
         self.max_failed_logons = options.max_failed_logons
