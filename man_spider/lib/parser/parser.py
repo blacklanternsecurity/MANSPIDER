@@ -219,6 +219,14 @@ class FileParser:
 
         for _filter, match_count in matches.items():
             log.info(ColoredFormatter.green(f'{pretty_filename}: matched "{_filter.pattern}" {match_count:,} times'))
+            json_log(
+                {
+                    "type": "content_match",
+                    "file": str(pretty_filename),
+                    "pattern": _filter.pattern,
+                    "count": match_count,
+                }
+            )
             # run grep for pretty output
             if not self.quiet:
                 self.grep(binary_content, _filter.pattern)

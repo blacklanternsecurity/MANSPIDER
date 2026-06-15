@@ -10,6 +10,7 @@ from man_spider.lib.smb import *
 from man_spider.lib.file import *
 from man_spider.lib.util import *
 from man_spider.lib.errors import *
+from man_spider.lib.logger import json_log
 from man_spider.lib.processpool import *
 
 
@@ -129,6 +130,16 @@ class Spiderling:
                 # otherwise, just save it
                 elif not self.local:
                     log.info(f"{self.target}: {file.share}\\{file.name} ({bytes_to_human(file.size)})")
+                    json_log(
+                        {
+                            "type": "file",
+                            "target": str(self.target),
+                            "share": file.share,
+                            "path": file.name,
+                            "size": file.size,
+                            "downloaded": not self.parent.no_download,
+                        }
+                    )
                     if not self.parent.no_download:
                         self.save_file(file)
 
