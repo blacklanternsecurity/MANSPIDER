@@ -315,17 +315,20 @@ def main():
         else:
             options.modified_before = None
 
-        # make sure extension formats are valid
-        for i, extension in enumerate(options.extensions):
-            if extension and not extension.startswith("."):
-                extension = f".{extension}"
-            options.extensions[i] = extension.lower()
+        # normalize extensions: split each entry on whitespace so that a quoted
+        # `--extensions "ini cfg"` behaves the same as `--extensions ini cfg`,
+        # then ensure a leading dot and lowercase
+        def normalize_extensions(extensions):
+            normalized = []
+            for entry in extensions:
+                for extension in entry.split():
+                    if not extension.startswith("."):
+                        extension = f".{extension}"
+                    normalized.append(extension.lower())
+            return normalized
 
-        # make sure extension blacklist is valid
-        for i, extension in enumerate(options.exclude_extensions):
-            if not extension.startswith("."):
-                extension = f".{extension}"
-            options.exclude_extensions[i] = extension.lower()
+        options.extensions = normalize_extensions(options.extensions)
+        options.exclude_extensions = normalize_extensions(options.exclude_extensions)
 
         # lowercase share names
         options.sharenames = [s.lower() for s in options.sharenames]
