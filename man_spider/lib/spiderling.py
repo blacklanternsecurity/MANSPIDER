@@ -135,7 +135,8 @@ class Spiderling:
                     json_log(
                         {
                             "type": "file",
-                            "target": str(self.target),
+                            "target": self.target.host,
+                            "port": self.target.port,
                             "share": file.share,
                             "path": file.name,
                             "size": file.size,
@@ -194,6 +195,18 @@ class Spiderling:
         try:
             if type(file) == RemoteFile:
                 matches = self.parent.parser.parse_file(str(file.tmp_filename), pretty_filename=str(file))
+                for _filter, match_count in matches.items():
+                    json_log(
+                        {
+                            "type": "content_match",
+                            "target": self.target.host,
+                            "port": self.target.port,
+                            "share": file.share,
+                            "path": file.name,
+                            "pattern": _filter.pattern,
+                            "count": match_count,
+                        }
+                    )
                 if matches and not self.parent.no_download:
                     self.save_file(file)
                 else:
