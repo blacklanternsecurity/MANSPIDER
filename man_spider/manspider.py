@@ -29,9 +29,37 @@ def go(options):
             )
             sleep(2)
 
-        # exit if no filters were specified
+        # if no filters were specified, just enumerate and print shares for each
+        # remote target (like `smbclient -L`) instead of spidering
         if not (options.filenames or options.extensions or options.exclude_extensions or options.content):
-            log.error("Please specify at least one of --filenames, --content, --extensions, or --exclude-extensions")
+            remote_targets = [t for t in options.targets if not isinstance(t, pathlib.PosixPath)]
+            if not remote_targets:
+                log.error("Please specify at least one of --filenames, --content, --extensions, or --exclude-extensions")
+                return
+            log.info("No filters specified; listing shares only")
+            for target in remote_targets:
+                smb_client = SMBClient(
+                    target.host,
+                    options.username,
+                    options.password,
+                    options.domain,
+                    options.hash,
+                    options.kerberos,
+                    options.aes_key,
+                    options.dc_ip,
+                    port=target.port,
+                )
+                if smb_client.login() is None:
+                    log.warning(f"{target.host}: Could not connect")
+                    continue
+                shares = smb_client.shares
+                if shares:
+                    log.info(f"{target.host}: {len(shares)} shares:")
+                    for share in shares:
+                        log.info(f"  {share}")
+                        json_log({"type": "share", "target": target.host, "port": target.port, "share": share})
+                else:
+                    log.warning(f"{target.host}: No shares found (or enumeration denied)")
             return
 
         # exit if --maxdepth is invalid
@@ -79,6 +107,16 @@ def load_content_wordlist(filepath, options):
 
 
 def main():
+
+    # The logging setup (lib/logger.py) shares a multiprocessing Queue between the
+    # parent's QueueListener (console output) and the child worker's QueueHandler.
+    # Python 3.14 changed the default start method on Linux to "forkserver", which
+    # re-imports modules in the child and creates a *new*, unlistened queue -> no
+    # console output. Force "fork" so parent and child share the same queue.
+    try:
+        multiprocessing.set_start_method("fork", force=True)
+    except (ValueError, RuntimeError):
+        pass
 
     interrupted = False
 
@@ -226,6 +264,16 @@ def main():
         metavar="DATE",
         help="only show files modified before this date (format: YYYY-MM-DD)",
     )
+    parser.add_argument(
+        "--json",
+        dest="json",
+        nargs="?",
+        const="-",
+        default=None,
+        metavar="FILE",
+        help="write results (shares, matched/looted files) as JSON Lines; to FILE, "
+        "or to stdout if no FILE is given (in which case logs are sent to stderr)",
+    )
 
     syntax_error = False
     try:
@@ -240,6 +288,9 @@ def main():
 
         if options.verbose:
             log.setLevel("DEBUG")
+
+        # configure JSON Lines output (must happen before forking the worker)
+        set_json_output(options.json)
 
         if options.kerberos and "KRB5CCNAME" not in os.environ:
             log.error("KRB5CCNAME is not set in the environment")
@@ -264,17 +315,20 @@ def main():
         else:
             options.modified_before = None
 
-        # make sure extension formats are valid
-        for i, extension in enumerate(options.extensions):
-            if extension and not extension.startswith("."):
-                extension = f".{extension}"
-            options.extensions[i] = extension.lower()
+        # normalize extensions: split each entry on whitespace so that a quoted
+        # `--extensions "ini cfg"` behaves the same as `--extensions ini cfg`,
+        # then ensure a leading dot and lowercase
+        def normalize_extensions(extensions):
+            normalized = []
+            for entry in extensions:
+                for extension in entry.split():
+                    if not extension.startswith("."):
+                        extension = f".{extension}"
+                    normalized.append(extension.lower())
+            return normalized
 
-        # make sure extension blacklist is valid
-        for i, extension in enumerate(options.exclude_extensions):
-            if not extension.startswith("."):
-                extension = f".{extension}"
-            options.exclude_extensions[i] = extension.lower()
+        options.extensions = normalize_extensions(options.extensions)
+        options.exclude_extensions = normalize_extensions(options.exclude_extensions)
 
         # lowercase share names
         options.sharenames = [s.lower() for s in options.sharenames]

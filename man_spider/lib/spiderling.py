@@ -10,6 +10,7 @@ from man_spider.lib.smb import *
 from man_spider.lib.file import *
 from man_spider.lib.util import *
 from man_spider.lib.errors import *
+from man_spider.lib.logger import json_log
 from man_spider.lib.processpool import *
 
 
@@ -59,6 +60,8 @@ class Spiderling:
         try:
             self.parent = parent
             self.target = target
+            # ensures enumerated shares are logged/emitted only once per target
+            self._shares_logged = False
 
             # unless we're only searching local files, connect to target
             if type(self.target) == pathlib.PosixPath:
@@ -129,6 +132,17 @@ class Spiderling:
                 # otherwise, just save it
                 elif not self.local:
                     log.info(f"{self.target}: {file.share}\\{file.name} ({bytes_to_human(file.size)})")
+                    json_log(
+                        {
+                            "type": "file",
+                            "target": self.target.host,
+                            "port": self.target.port,
+                            "share": file.share,
+                            "path": file.name,
+                            "size": file.size,
+                            "downloaded": not self.parent.no_download,
+                        }
+                    )
                     if not self.parent.no_download:
                         self.save_file(file)
 
@@ -181,6 +195,19 @@ class Spiderling:
         try:
             if type(file) == RemoteFile:
                 matches = self.parent.parser.parse_file(str(file.tmp_filename), pretty_filename=str(file))
+                for _filter, match_data in matches.items():
+                    json_log(
+                        {
+                            "type": "content_match",
+                            "target": self.target.host,
+                            "port": self.target.port,
+                            "share": file.share,
+                            "path": file.name,
+                            "pattern": _filter.pattern,
+                            "count": match_data["count"],
+                            "matches": match_data["samples"],
+                        }
+                    )
                 if matches and not self.parent.no_download:
                     self.save_file(file)
                 else:
@@ -210,8 +237,25 @@ class Spiderling:
         # Keep track of shares we've already yielded to avoid duplicates
         yielded_shares = set()
 
+        enumerated_shares = self.smb_client.shares
+
+        # always report the shares we found, even while spidering with filters
+        if not self._shares_logged:
+            self._shares_logged = True
+            if enumerated_shares:
+                log.info(f"{self.target}: {len(enumerated_shares)} shares: {', '.join(enumerated_shares)}")
+                for share in enumerated_shares:
+                    json_log(
+                        {
+                            "type": "share",
+                            "target": self.target.host,
+                            "port": self.target.port,
+                            "share": share,
+                        }
+                    )
+
         # First, yield enumerated shares that match filters
-        for share in self.smb_client.shares:
+        for share in enumerated_shares:
             if self.share_match(share):
                 yielded_shares.add(share.lower())
                 yield share
