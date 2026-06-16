@@ -195,7 +195,7 @@ class Spiderling:
         try:
             if type(file) == RemoteFile:
                 matches = self.parent.parser.parse_file(str(file.tmp_filename), pretty_filename=str(file))
-                for _filter, match_count in matches.items():
+                for _filter, match_data in matches.items():
                     json_log(
                         {
                             "type": "content_match",
@@ -204,7 +204,8 @@ class Spiderling:
                             "share": file.share,
                             "path": file.name,
                             "pattern": _filter.pattern,
-                            "count": match_count,
+                            "count": match_data["count"],
+                            "matches": match_data["samples"],
                         }
                     )
                 if matches and not self.parent.no_download:
