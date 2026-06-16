@@ -214,7 +214,8 @@ class FileParser:
         except Exception:
             pass
 
-        # count the matches and capture a sample of the actual matched strings
+        # count the matches and capture a sample of the actual matched strings,
+        # including where in the file each one was found (1-based line/column)
         for _filter, span in self.match(text_content):
             entry = matches.get(_filter)
             if entry is None:
@@ -222,8 +223,13 @@ class FileParser:
                 matches[_filter] = entry
             entry["count"] += 1
             if len(entry["samples"]) < self.max_match_samples:
-                sample = text_content[span[0]:span[1]][: self.match_sample_maxlen]
-                if sample not in entry["samples"]:
+                start, end = span
+                value = text_content[start:end][: self.match_sample_maxlen]
+                line = text_content.count("\n", 0, start) + 1
+                column = start - text_content.rfind("\n", 0, start)
+                end_column = column + (end - start)
+                sample = {"match": value, "line": line, "column": column, "end_column": end_column}
+                if not any(s["match"] == value and s["line"] == line and s["column"] == column for s in entry["samples"]):
                     entry["samples"].append(sample)
 
         for _filter, match_data in matches.items():
