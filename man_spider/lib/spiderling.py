@@ -60,6 +60,8 @@ class Spiderling:
         try:
             self.parent = parent
             self.target = target
+            # ensures enumerated shares are logged/emitted only once per target
+            self._shares_logged = False
 
             # unless we're only searching local files, connect to target
             if type(self.target) == pathlib.PosixPath:
@@ -221,8 +223,25 @@ class Spiderling:
         # Keep track of shares we've already yielded to avoid duplicates
         yielded_shares = set()
 
+        enumerated_shares = self.smb_client.shares
+
+        # always report the shares we found, even while spidering with filters
+        if not self._shares_logged:
+            self._shares_logged = True
+            if enumerated_shares:
+                log.info(f"{self.target}: {len(enumerated_shares)} shares: {', '.join(enumerated_shares)}")
+                for share in enumerated_shares:
+                    json_log(
+                        {
+                            "type": "share",
+                            "target": self.target.host,
+                            "port": self.target.port,
+                            "share": share,
+                        }
+                    )
+
         # First, yield enumerated shares that match filters
-        for share in self.smb_client.shares:
+        for share in enumerated_shares:
             if self.share_match(share):
                 yielded_shares.add(share.lower())
                 yield share
