@@ -34,6 +34,7 @@ class MANSPIDER:
 
         self.dir_whitelist = options.dirnames
         self.dir_blacklist = options.exclude_dirnames
+        self.root_dir = options.root_dir
 
         self.no_download = options.no_download
 

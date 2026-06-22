@@ -167,7 +167,8 @@ class Spiderling:
 
         else:
             for share in self.shares:
-                for remote_file in self.list_files(share):
+                start_path = self.parent.root_dir if self.parent.root_dir else ""
+                for remote_file in self.list_files(share, path=start_path):
                     if not self.parent.no_download or self.parent.parser.content_filters:
                         self.get_file(remote_file)
                     yield remote_file
@@ -233,7 +234,7 @@ class Spiderling:
         Only yield files which conform to all filters (except content)
         """
 
-        if depth < self.parent.maxdepth and self.dir_match(path):
+        if depth < self.parent.maxdepth and self.should_enter_dir(path):
             files = []
             while tries > 0:
                 try:
@@ -258,6 +259,10 @@ class Spiderling:
                         yield file
 
                 else:
+                    if self.parent.root_dir and self.parent.dir_whitelist and not self.dir_match(path):
+                        log.debug(f"{self.target}: Skipping {share}{full_path}: directory not in whitelist")
+                        continue
+
                     # skip the file if it didn't match extension filters
                     if self.extension_blacklisted(name):
                         log.debug(f"{self.target}: Skipping {share}{full_path}: extension is blacklisted")
@@ -351,6 +356,24 @@ class Spiderling:
             log.debug(f"{self.target}: Skipping share {share}: not in whitelist")
 
         return False
+
+    def should_enter_dir(self, path):
+        """
+        When root_dir is set, only blacklist gates traversal.
+        Otherwise, use original dir_match behavior.
+        """
+
+        if not path:
+            return True
+
+        if self.parent.root_dir:
+            dirname = str(path).lower().replace("/", "\\")
+            if self.parent.dir_blacklist and any([k.lower() in dirname for k in self.parent.dir_blacklist]):
+                log.debug(f"{self.target}: Skipping blacklisted dir: {path}")
+                return False
+            return True
+
+        return self.dir_match(path)
 
     def dir_match(self, path):
         """

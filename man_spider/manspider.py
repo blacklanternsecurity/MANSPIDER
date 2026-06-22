@@ -190,6 +190,12 @@ def main():
         help="don't search directories containing these strings (multiple supported)",
         metavar="DIR",
     )
+    parser.add_argument(
+        "--root-dir",
+        default="",
+        help='start path within the share, e.g. "Users" to start at \\Users\\',
+        metavar="PATH",
+    )
     parser.add_argument("-q", "--quiet", action="store_true", help="don't display matching file content")
     parser.add_argument("-n", "--no-download", action="store_true", help="don't download matching files")
     parser.add_argument("-mfail", "--max-failed-logons", type=int, help="limit failed logons", metavar="INT")
@@ -283,6 +289,10 @@ def main():
         # lowercase directory names
         options.dirnames = [s.lower() for s in options.dirnames]
         options.exclude_dirnames = [s.lower() for s in options.exclude_dirnames]
+
+        # normalize root directory path
+        root_dir = options.root_dir.strip("\\/")
+        options.root_dir = ("\\" + root_dir) if root_dir else ""
 
         # deduplicate targets
         targets = set()
