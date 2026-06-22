@@ -350,6 +350,10 @@ class Spiderling:
         Return true if "share" matches any of the share filters
         """
 
+        # explicit whitelist overrides the blacklist
+        if self.parent.share_whitelist and (share.lower() in self.parent.share_whitelist):
+            return True
+
         # if the share has been whitelisted
         if (not self.parent.share_whitelist) or (share.lower() in self.parent.share_whitelist):
             # and hasn't been blacklisted
