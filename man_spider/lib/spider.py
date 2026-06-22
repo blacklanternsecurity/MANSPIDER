@@ -18,6 +18,7 @@ class MANSPIDER:
         self.threads = options.threads
         self.maxdepth = options.maxdepth
         self.quiet = options.quiet
+        self.verbose = options.verbose
 
         self.username = options.username
         self.password = options.password

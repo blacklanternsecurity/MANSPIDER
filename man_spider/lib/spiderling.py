@@ -68,6 +68,9 @@ class Spiderling:
             else:
                 self.local = False
 
+                if parent.verbose:
+                    log.setLevel(logging.DEBUG)
+
                 self.smb_client = SMBClient(
                     target.host,
                     parent.username,
@@ -168,6 +171,8 @@ class Spiderling:
         else:
             for share in self.shares:
                 start_path = self.parent.root_dir if self.parent.root_dir else ""
+                if start_path:
+                    log.info(f"{self.target}: Starting crawl at {share}{start_path}")
                 for remote_file in self.list_files(share, path=start_path):
                     if not self.parent.no_download or self.parent.parser.content_filters:
                         self.get_file(remote_file)
