@@ -255,11 +255,26 @@ class Spiderling:
             if files:
                 log.debug(f"{self.target}: {share}{path}: contains {len(files):,} items")
 
+            # When root_dir + whitelist are set, check if any subdirectory
+            # at this level matches the whitelist. If so, only enter
+            # matching dirs (we've reached the target level). If not,
+            # we're still navigating towards the target — enter all.
+            filter_dirs_at_this_level = False
+            if self.parent.root_dir and self.parent.dir_whitelist:
+                subdirs = [f.get_longname().lower() for f in files if f.is_directory()]
+                filter_dirs_at_this_level = any(
+                    any(k.lower() in d for k in self.parent.dir_whitelist)
+                    for d in subdirs
+                )
+
             for f in files:
                 name = f.get_longname()
                 full_path = f"{path}\\{name}"
                 # if it's a directory, go deeper
                 if f.is_directory():
+                    if filter_dirs_at_this_level and not any(k.lower() in name.lower() for k in self.parent.dir_whitelist):
+                        log.debug(f"{self.target}: Skipping {full_path}: not in directory whitelist")
+                        continue
                     for file in self.list_files(share, full_path, (depth + 1)):
                         yield file
 
@@ -368,8 +383,9 @@ class Spiderling:
 
     def should_enter_dir(self, path):
         """
-        When root_dir is set, only blacklist gates traversal.
-        Otherwise, use original dir_match behavior.
+        When root_dir is set, only the blacklist gates traversal at this
+        level. The whitelist is applied per-level inside list_files()
+        by checking siblings.
         """
 
         if not path:
