@@ -302,7 +302,8 @@ def main():
         [[targets.add(t) for t in g] for g in options.targets]
         options.targets = list(targets)
 
-        p = multiprocessing.Process(target=go, args=(options,), daemon=False)
+        ctx = multiprocessing.get_context("fork")
+        p = ctx.Process(target=go, args=(options,), daemon=False)
         p.start()
         listener.start()
 

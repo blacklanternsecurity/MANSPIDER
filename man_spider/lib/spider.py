@@ -87,14 +87,17 @@ class MANSPIDER:
 
     def start(self):
 
+        ctx = multiprocessing.get_context("fork")
+
         for target in self.targets:
             try:
                 while 1:
                     for i, process in enumerate(self.spiderling_pool):
                         # if there's room in the pool
                         if process is None or not process.is_alive():
-                            # start spiderling (use fork — MANSPIDER can't be pickled for spawn)
-                            ctx = multiprocessing.get_context("fork")
+                            # reap finished process
+                            if process is not None:
+                                process.join(timeout=1)
                             self.spiderling_pool[i] = ctx.Process(
                                 target=Spiderling, args=(target, self), daemon=False
                             )
@@ -104,18 +107,16 @@ class MANSPIDER:
                         else:
                             # otherwise, clear the queue
                             self.check_spiderling_queue()
+                    # all slots busy, wait before checking again
+                    sleep(0.5)
 
             except AssertionError:
                 continue
 
-            # save on CPU
-            sleep(0.1)
-
-        while 1:
-            self.check_spiderling_queue()
-            dead_spiderlings = [s is None or not s.is_alive() for s in self.spiderling_pool]
-            if all(dead_spiderlings):
-                break
+        # wait for remaining spiderlings to finish
+        for process in self.spiderling_pool:
+            if process is not None:
+                process.join()
 
         # make sure the queue is empty
         self.check_spiderling_queue()
