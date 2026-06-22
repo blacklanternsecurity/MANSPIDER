@@ -19,6 +19,9 @@ log.setLevel(logging.INFO)
 
 def go(options):
 
+    if options.verbose:
+        log.setLevel(logging.DEBUG)
+
     log.info("MANSPIDER command executed: " + " ".join(sys.argv))
 
     try:

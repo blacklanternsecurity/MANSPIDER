@@ -93,8 +93,9 @@ class MANSPIDER:
                     for i, process in enumerate(self.spiderling_pool):
                         # if there's room in the pool
                         if process is None or not process.is_alive():
-                            # start spiderling
-                            self.spiderling_pool[i] = multiprocessing.Process(
+                            # start spiderling (use fork — MANSPIDER can't be pickled for spawn)
+                            ctx = multiprocessing.get_context("fork")
+                            self.spiderling_pool[i] = ctx.Process(
                                 target=Spiderling, args=(target, self), daemon=False
                             )
                             self.spiderling_pool[i].start()
