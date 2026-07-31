@@ -407,7 +407,7 @@ dev = [
 requires-dist = [
     { name = "charset-normalizer" },
     { name = "impacket" },
-    { name = "kreuzberg" },
+    { name = "kreuzberg", specifier = ">=4.2.9,<4.4" },
 ]
 
 [package.metadata.requires-dev]
