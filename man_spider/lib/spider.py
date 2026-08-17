@@ -2,6 +2,7 @@ import re
 import queue
 from time import sleep
 import multiprocessing
+import threading
 from pathlib import Path
 
 from man_spider.lib.spiderling import *
@@ -54,7 +55,7 @@ class MANSPIDER:
         self.failed_logons = 0
 
         self.spiderling_pool = [None] * self.threads
-        self.spiderling_queue = multiprocessing.Manager().Queue()
+        self.spiderling_queue = queue.Queue()
 
         # prevents needing to continually instantiate new SMBClients
         # {target: SMBClient() ...}
@@ -92,7 +93,7 @@ class MANSPIDER:
                         # if there's room in the pool
                         if process is None or not process.is_alive():
                             # start spiderling
-                            self.spiderling_pool[i] = multiprocessing.Process(
+                            self.spiderling_pool[i] = threading.Thread(
                                 target=Spiderling, args=(target, self), daemon=False
                             )
                             self.spiderling_pool[i].start()
