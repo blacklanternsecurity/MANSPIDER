@@ -3,7 +3,6 @@ from copy import copy
 from sys import stdout
 from pathlib import Path
 from datetime import datetime
-from multiprocessing import Queue
 from logging.handlers import QueueHandler, QueueListener
 
 
@@ -74,7 +73,7 @@ class CustomQueueListener(QueueListener):
             pass
 
 
-### LOG TO STDERR ###
+### LOG TO CONSOLE ###
 
 console = logging.StreamHandler(stdout)
 # tell the handler to use this format
@@ -82,14 +81,21 @@ console.setFormatter(ColoredFormatter("%(levelname)s %(message)s"))
 
 ### LOG TO FILE ###
 
-log_queue = Queue()
-listener = CustomQueueListener(log_queue, console)
-sender = QueueHandler(log_queue)
-logging.getLogger("manspider").handlers = [sender]
-
 logdir = Path.home() / ".manspider" / "logs"
 logdir.mkdir(parents=True, exist_ok=True)
 logfile = f"manspider_{datetime.now().strftime('%m-%d-%Y')}.log"
 handler = logging.FileHandler(str(logdir / logfile))
 handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-logging.getLogger("manspider").addHandler(handler)
+
+
+def configure_logging(log_queue=None, level=None):
+    """Configure process-local handlers, optionally forwarding console records through a shared queue."""
+
+    console_handler = QueueHandler(log_queue) if log_queue is not None else console
+    manspider_log = logging.getLogger("manspider")
+    manspider_log.handlers = [console_handler, handler]
+    if level is not None:
+        manspider_log.setLevel(level)
+
+
+configure_logging()

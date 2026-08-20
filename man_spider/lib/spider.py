@@ -1,23 +1,34 @@
 import re
 import queue
+import logging
 from time import sleep
 import multiprocessing
 from pathlib import Path
 
 from man_spider.lib.spiderling import *
 from man_spider.lib.parser import FileParser
+from man_spider.lib.logger import configure_logging
 
 # set up logging
 log = logging.getLogger("manspider")
 
 
+def run_spiderling(spiderling_cls, target, parent):
+    """Configure child-process logging before starting a spiderling."""
+
+    configure_logging(parent.log_queue, level=parent.log_level)
+    spiderling_cls(target, parent)
+
+
 class MANSPIDER:
-    def __init__(self, options):
+    def __init__(self, options, log_queue=None):
 
         self.targets = options.targets
         self.threads = options.threads
         self.maxdepth = options.maxdepth
         self.quiet = options.quiet
+        self.log_queue = log_queue
+        self.log_level = logging.DEBUG if options.verbose else logging.INFO
 
         self.username = options.username
         self.password = options.password
@@ -83,6 +94,14 @@ class MANSPIDER:
         if self.modified_before:
             log.info(f"Filtering files modified before: {self.modified_before.strftime('%Y-%m-%d')}")
 
+    def __getstate__(self):
+        """Exclude parent-only runtime objects when serializing a spiderling's configuration."""
+
+        state = self.__dict__.copy()
+        state["spiderling_pool"] = [None] * self.threads
+        state["smb_client_cache"] = {}
+        return state
+
     def start(self):
 
         for target in self.targets:
@@ -93,7 +112,7 @@ class MANSPIDER:
                         if process is None or not process.is_alive():
                             # start spiderling
                             self.spiderling_pool[i] = multiprocessing.Process(
-                                target=Spiderling, args=(target, self), daemon=False
+                                target=run_spiderling, args=(Spiderling, target, self), daemon=False
                             )
                             self.spiderling_pool[i].start()
                             # success, break out of infinite loop
