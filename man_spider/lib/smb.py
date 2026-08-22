@@ -199,15 +199,19 @@ class SMBClient:
                             if s in str(e):
                                 log.warning(f"{self.server}: {s}: {self.username}")
 
-                    log.debug(f"{self.server}: Trying guest session")
-                    self.username = "Guest"
+                    # Prefer a true null/anonymous session first: on Samba, the SRVSVC
+                    # share-enumeration RPC (listShares) is permitted for anonymous logons
+                    # but denied for the "Guest" account, so null must be tried before Guest
+                    # to match `smbclient -L -N` behaviour.
+                    log.debug(f"{self.server}: Trying null session")
+                    self.username = ""
                     self.password = ""
                     self.domain = ""
                     self.nthash = ""
-                    guest_success = self.login(refresh=True, first_try=False)
-                    if not guest_success:
-                        log.debug(f"{self.server}: Switching to null session")
-                        self.username = ""
+                    null_success = self.login(refresh=True, first_try=False)
+                    if not null_success:
+                        log.debug(f"{self.server}: Switching to guest session")
+                        self.username = "Guest"
                         self.login(refresh=True, first_try=False)
 
             return False

@@ -81,6 +81,10 @@ class FileParser:
         ".dylib",
     }
 
+    # limits for the matched strings captured for JSON output
+    max_match_samples = 20  # max distinct matched strings kept per pattern per file
+    match_sample_maxlen = 256  # max length of each captured matched string
+
     def __init__(self, filters, quiet=False):
         self.init_content_filters(filters)
         self.quiet = quiet
@@ -210,15 +214,30 @@ class FileParser:
         except Exception:
             pass
 
-        # count the matches
-        for _filter, match in self.match(text_content):
-            try:
-                matches[_filter] += 1
-            except KeyError:
-                matches[_filter] = 1
+        # count the matches and capture a sample of the actual matched strings,
+        # including where in the file each one was found (1-based line/column)
+        for _filter, span in self.match(text_content):
+            entry = matches.get(_filter)
+            if entry is None:
+                entry = {"count": 0, "samples": []}
+                matches[_filter] = entry
+            entry["count"] += 1
+            if len(entry["samples"]) < self.max_match_samples:
+                start, end = span
+                value = text_content[start:end][: self.match_sample_maxlen]
+                line = text_content.count("\n", 0, start) + 1
+                column = start - text_content.rfind("\n", 0, start)
+                end_column = column + (end - start)
+                sample = {"match": value, "line": line, "column": column, "end_column": end_column}
+                if not any(s["match"] == value and s["line"] == line and s["column"] == column for s in entry["samples"]):
+                    entry["samples"].append(sample)
 
-        for _filter, match_count in matches.items():
-            log.info(ColoredFormatter.green(f'{pretty_filename}: matched "{_filter.pattern}" {match_count:,} times'))
+        for _filter, match_data in matches.items():
+            log.info(
+                ColoredFormatter.green(
+                    f'{pretty_filename}: matched "{_filter.pattern}" {match_data["count"]:,} times'
+                )
+            )
             # run grep for pretty output
             if not self.quiet:
                 self.grep(binary_content, _filter.pattern)

@@ -1,3 +1,6 @@
+import os
+import sys
+import json
 import logging
 from copy import copy
 from sys import stdout
@@ -5,6 +8,54 @@ from pathlib import Path
 from datetime import datetime
 from multiprocessing import Queue
 from logging.handlers import QueueHandler, QueueListener
+
+
+### JSON LINES OUTPUT ###
+
+# JSONL destination, configured once via set_json_output() before forking so that
+# child/worker processes inherit it (we force the "fork" start method).
+_json_output_path = None  # file path, when writing JSONL to a file
+_json_to_stdout = False  # when True, JSONL goes to stdout and logs go to stderr
+
+
+def set_json_output(path):
+    """
+    Configure JSONL output. "path" is:
+      - None / ""   -> disabled
+      - "-"         -> write JSONL to stdout, and redirect human-readable logs to stderr
+      - <filename>  -> append JSONL to that file
+    """
+    global _json_output_path, _json_to_stdout
+    if not path:
+        _json_output_path = None
+        _json_to_stdout = False
+    elif path == "-":
+        _json_output_path = None
+        _json_to_stdout = True
+        # keep stdout clean for JSONL: send all log records to stderr instead
+        console.setStream(sys.stderr)
+    else:
+        _json_output_path = str(path)
+        _json_to_stdout = False
+
+
+def json_log(record):
+    """
+    Emit a single record as one JSON line. No-op when --json wasn't specified.
+    Safe across processes: a short write() to an O_APPEND file, or a single
+    os.write() to stdout, is atomic on POSIX.
+    """
+    if not (_json_output_path or _json_to_stdout):
+        return
+    try:
+        line = json.dumps(record, default=str) + "\n"
+        if _json_to_stdout:
+            os.write(1, line.encode("utf-8"))
+        else:
+            with open(_json_output_path, "a", encoding="utf-8") as f:
+                f.write(line)
+    except Exception:
+        pass
 
 
 ### PRETTY COLORS ###
