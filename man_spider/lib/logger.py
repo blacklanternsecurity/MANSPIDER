@@ -85,7 +85,7 @@ console.setFormatter(ColoredFormatter("%(levelname)s %(message)s"))
 log_queue = Queue()
 listener = CustomQueueListener(log_queue, console)
 sender = QueueHandler(log_queue)
-logging.getLogger("manspider").handlers = [sender]
+logging.getLogger("manspider").handlers = [console]
 
 logdir = Path.home() / ".manspider" / "logs"
 logdir.mkdir(parents=True, exist_ok=True)

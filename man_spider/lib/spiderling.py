@@ -2,6 +2,7 @@ import string
 import logging
 import pathlib
 import multiprocessing
+import threading
 from shutil import move
 from traceback import format_exc
 from datetime import datetime
@@ -123,7 +124,7 @@ class Spiderling:
                         self.parser_process.join()
                     except AttributeError:
                         pass
-                    self.parser_process = multiprocessing.Process(target=self.parse_file, args=(file,))
+                    self.parser_process = threading.Thread(target=self.parse_file, args=(file,), daemon=True)
                     self.parser_process.start()
 
                 # otherwise, just save it

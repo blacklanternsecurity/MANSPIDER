@@ -7,6 +7,7 @@ import argparse
 import traceback
 from time import sleep
 import multiprocessing
+import threading
 from datetime import datetime
 
 from man_spider.lib import *
@@ -289,9 +290,9 @@ def main():
         [[targets.add(t) for t in g] for g in options.targets]
         options.targets = list(targets)
 
-        p = multiprocessing.Process(target=go, args=(options,), daemon=False)
-        p.start()
         listener.start()
+        p = threading.Thread(target=go, args=(options,), daemon=False)
+        p.start()
 
     except argparse.ArgumentError as e:
         syntax_error = True
