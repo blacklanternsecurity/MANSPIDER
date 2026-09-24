@@ -11,9 +11,45 @@ from man_spider.lib.file import *
 from man_spider.lib.util import *
 from man_spider.lib.errors import *
 from man_spider.lib.processpool import *
+from man_spider.lib.logger import configure_logging
 
 
 log = logging.getLogger("manspider.spiderling")
+
+
+def save_file_to_loot(remote_file, loot_dir):
+    allowed_chars = string.ascii_lowercase + string.ascii_uppercase + string.digits + "._ "
+    loot_filename = str(remote_file).replace("\\", "_")
+    loot_filename = "".join([c for c in loot_filename if c in allowed_chars])
+    loot_dest = loot_dir / loot_filename
+    try:
+        move(str(remote_file.tmp_filename), str(loot_dest))
+    except Exception:
+        log.warning(f"Error saving {remote_file}")
+
+
+def parse_file_worker(file, parser, no_download, loot_dir, log_queue, log_level):
+    """Parse one file without serializing the live Spiderling or SMB connection."""
+
+    configure_logging(log_queue, level=log_level)
+    try:
+        if type(file) == RemoteFile:
+            matches = parser.parse_file(str(file.tmp_filename), pretty_filename=str(file))
+            if matches and not no_download:
+                save_file_to_loot(file, loot_dir)
+            else:
+                file.tmp_filename.unlink()
+        else:
+            log.debug(f"Found file: {file}")
+            matches = parser.parse_file(file, file)
+        return matches
+    except Exception as e:
+        if log.level <= logging.DEBUG:
+            log.error(format_exc())
+        else:
+            log.error(f"Error parsing file {file}: {e}")
+    except KeyboardInterrupt:
+        log.critical("File parsing interrupted")
 
 
 class SpiderlingMessage:
@@ -123,7 +159,17 @@ class Spiderling:
                         self.parser_process.join()
                     except AttributeError:
                         pass
-                    self.parser_process = multiprocessing.Process(target=self.parse_file, args=(file,))
+                    self.parser_process = multiprocessing.Process(
+                        target=parse_file_worker,
+                        args=(
+                            file,
+                            self.parent.parser,
+                            self.parent.no_download,
+                            self.parent.loot_dir,
+                            self.parent.log_queue,
+                            self.parent.log_level,
+                        ),
+                    )
                     self.parser_process.start()
 
                 # otherwise, just save it
@@ -175,30 +221,17 @@ class Spiderling:
     def parse_file(self, file):
         """
         Simple wrapper around self.parent.parser.parse_file()
-        For sole purpose of threading
+        For sole purpose of multiprocessing
         """
 
-        try:
-            if type(file) == RemoteFile:
-                matches = self.parent.parser.parse_file(str(file.tmp_filename), pretty_filename=str(file))
-                if matches and not self.parent.no_download:
-                    self.save_file(file)
-                else:
-                    file.tmp_filename.unlink()
-
-            else:
-                log.debug(f"Found file: {file}")
-                self.parent.parser.parse_file(file, file)
-
-        # log all exceptions
-        except Exception as e:
-            if log.level <= logging.DEBUG:
-                log.error(format_exc())
-            else:
-                log.error(f"Error parsing file {file}: {e}")
-
-        except KeyboardInterrupt:
-            log.critical("File parsing interrupted")
+        return parse_file_worker(
+            file,
+            self.parent.parser,
+            self.parent.no_download,
+            self.parent.loot_dir,
+            self.parent.log_queue,
+            self.parent.log_level,
+        )
 
     @property
     def shares(self):
@@ -447,7 +480,17 @@ class Spiderling:
     def parse_local_files(self, files):
 
         with ProcessPool(self.parent.threads) as pool:
-            for r in pool.map(self.parse_file, files):
+            for r in pool.map(
+                parse_file_worker,
+                files,
+                args=(
+                    self.parent.parser,
+                    self.parent.no_download,
+                    self.parent.loot_dir,
+                    self.parent.log_queue,
+                    self.parent.log_level,
+                ),
+            ):
                 pass
 
     def save_file(self, remote_file):
@@ -455,17 +498,7 @@ class Spiderling:
         Moves a file from temp storage into the loot directory
         """
 
-        allowed_chars = string.ascii_lowercase + string.ascii_uppercase + string.digits + "._ "
-
-        # replace backslashes with underscores to preserve directory names
-        loot_filename = str(remote_file).replace("\\", "_")
-        # remove weird characters
-        loot_filename = "".join([c for c in loot_filename if c in allowed_chars])
-        loot_dest = self.parent.loot_dir / loot_filename
-        try:
-            move(str(remote_file.tmp_filename), str(loot_dest))
-        except Exception:
-            log.warning(f"Error saving {remote_file}")
+        save_file_to_loot(remote_file, self.parent.loot_dir)
 
     def get_file(self, remote_file):
         """

@@ -17,7 +17,10 @@ log = logging.getLogger("manspider")
 log.setLevel(logging.INFO)
 
 
-def go(options):
+def go(options, log_queue=None):
+
+    log_level = logging.DEBUG if options.verbose else logging.INFO
+    configure_logging(log_queue, level=log_level)
 
     log.info("MANSPIDER command executed: " + " ".join(sys.argv))
 
@@ -42,7 +45,7 @@ def go(options):
         log.info(f"Skipping files larger than {bytes_to_human(options.max_filesize)}")
         log.info(f"Using {options.threads:,} threads")
 
-        manspider = MANSPIDER(options)
+        manspider = MANSPIDER(options, log_queue=log_queue)
         manspider.start()
 
     except KeyboardInterrupt:
@@ -81,6 +84,9 @@ def load_content_wordlist(filepath, options):
 def main():
 
     interrupted = False
+    listener = None
+    log_queue = None
+    p = None
 
     examples = """
 
@@ -289,8 +295,11 @@ def main():
         [[targets.add(t) for t in g] for g in options.targets]
         options.targets = list(targets)
 
-        p = multiprocessing.Process(target=go, args=(options,), daemon=False)
+        ctx = multiprocessing.get_context()
+        log_queue = ctx.Queue()
+        p = ctx.Process(target=go, args=(options, log_queue), daemon=False)
         p.start()
+        listener = CustomQueueListener(log_queue, console)
         listener.start()
 
     except argparse.ArgumentError as e:
@@ -316,12 +325,20 @@ def main():
         sleep(1)
         try:
             # wait for go to finish
-            p.join()
+            if p is not None:
+                p.join()
         except:
             pass
         try:
             # stop the log listener
-            listener.stop()
+            if listener is not None:
+                listener.stop()
+        except:
+            pass
+        try:
+            if log_queue is not None:
+                log_queue.close()
+                log_queue.join_thread()
         except:
             pass
 
