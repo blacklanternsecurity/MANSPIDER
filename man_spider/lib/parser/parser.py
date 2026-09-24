@@ -18,7 +18,14 @@ def is_text_file(filepath):
     best = result.best()
     # Only consider it a text file if we have high confidence
     # and the encoding is detected (not binary)
-    return best is not None and best.encoding is not None
+    if best is None or best.encoding is None:
+        return False
+    # Reject if decoded content has too many replacement characters —
+    # this means charset-normalizer forced a binary file through as text
+    text = str(best)
+    if text and text.count("\ufffd") / len(text) > 0.01:
+        return False
+    return True
 
 
 def extract_text_file(filepath):
@@ -136,13 +143,11 @@ class FileParser:
                         Interpret PATTERN as an extended regular expression
                     -i, --ignore-case
                         Ignore case distinctions
-                    -a, --text
-                        Process a binary file as if it were text
                     -m NUM, --max-count=NUM
-                        Stop  reading  a file after NUM matching lines
+                        Stop reading a file after NUM matching lines
                 """
                 grep_process = sp.Popen(
-                    ["grep", "-Eiam", "5", "--color=always", pattern], stdin=sp.PIPE, stdout=sp.PIPE
+                    ["grep", "-Eim", "5", "--color=always", pattern], stdin=sp.PIPE, stdout=sp.PIPE
                 )
                 grep_output = grep_process.communicate(content)[0]
                 for line in grep_output.splitlines():
@@ -203,6 +208,15 @@ class FileParser:
         # Guard against None content
         if text_content is None:
             return matches
+
+        # Guard against binary garbage: if more than 1% of characters are
+        # Unicode replacement chars (U+FFFD), the file was decoded incorrectly.
+        # Fall back to raw ASCII string extraction to avoid dumping huge binary chunks.
+        if text_content and text_content.count("\ufffd") / len(text_content) > 0.01:
+            log.debug(f"High replacement char ratio in {pretty_filename}, falling back to string extraction")
+            text_content = extract_strings_from_binary(str(file))
+            if text_content is None:
+                return matches
 
         # try to convert to UTF-8 for grep-friendliness
         try:
