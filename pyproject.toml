@@ -9,7 +9,7 @@ license = {text = "GPL-3.0"}
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "kreuzberg>=4.2.9,<4.4",
+    "kreuzberg>=4.2.9,<4.11",
     "impacket",
     "charset-normalizer",
 ]
