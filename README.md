@@ -7,7 +7,7 @@
 
 **Manspider 2.0 is here!** This brings significant improvements:
 
-- **New and improved text extraction** powered by [Kreuzberg](https://github.com/Goldziher/kreuzberg) - now supporting PDF, DOCX, XLSX, PPTX, images with OCR, and many more formats
+- **New and improved text extraction** powered by [xberg](https://github.com/xberg-io/xberg) - now supporting PDF, DOCX, XLSX, PPTX, images with OCR, and many more formats
 - **Modern package management** with [uv](https://github.com/astral-sh/uv) for faster, more reliable installations
 - **Python 3.14 support** - ready for the latest Python releases
 - **Date filtering** - search files by modification date with `--modified-after` and `--modified-before`
@@ -52,14 +52,14 @@ pipx install git+https://github.com/blacklanternsecurity/MANSPIDER
 
 #### Optional Dependencies
 
-Manspider uses [Kreuzberg](https://github.com/Goldziher/kreuzberg) for text extraction from various file formats. Some formats require additional system dependencies:
+Manspider uses [xberg](https://github.com/xberg-io/xberg) for text extraction from various file formats. Some formats require additional system dependencies:
 
 ~~~bash
 # For OCR text extraction from images (PNG, JPEG, etc.)
 sudo apt install tesseract-ocr
 
 # For legacy Microsoft Office format support (.doc, .xls)
-# Kreuzberg uses LibreOffice for conversion
+# xberg uses LibreOffice for conversion
 sudo apt install libreoffice
 ~~~
 

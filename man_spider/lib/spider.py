@@ -23,6 +23,18 @@ def run_spiderling(spiderling_cls, target, parent):
 class MANSPIDER:
     def __init__(self, options, log_queue=None):
 
+        # Avoid fork() of a multi-threaded process, which can deadlock in the
+        # child. The extraction backend (xberg) spins up threads, so the default
+        # "fork" start method (used on Linux through Python 3.13) is unsafe once
+        # any file has been parsed. Prefer "forkserver" where available (the
+        # default on 3.14+; on Windows the default is already "spawn"). This must
+        # run before the first process/Manager is spawned below.
+        try:
+            if "forkserver" in multiprocessing.get_all_start_methods():
+                multiprocessing.set_start_method("forkserver")
+        except RuntimeError:
+            pass  # start method already set
+
         self.targets = options.targets
         self.threads = options.threads
         self.maxdepth = options.maxdepth

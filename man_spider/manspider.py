@@ -83,6 +83,17 @@ def load_content_wordlist(filepath, options):
 
 def main():
 
+    # Avoid fork() of a multi-threaded process, which can deadlock in the child.
+    # The extraction backend (xberg) spins up threads, so the default "fork"
+    # start method (used on Linux through Python 3.13) is unsafe. Prefer
+    # "forkserver" where available (the default on 3.14+); on Windows the
+    # default is already "spawn", so this is a no-op there.
+    try:
+        if "forkserver" in multiprocessing.get_all_start_methods():
+            multiprocessing.set_start_method("forkserver")
+    except RuntimeError:
+        pass  # start method already set
+
     interrupted = False
     listener = None
     log_queue = None

@@ -1,15 +1,20 @@
+import os
 import re
+import asyncio
 import logging
 from time import sleep
 import subprocess as sp
 from pathlib import Path
-from kreuzberg import extract_file_sync
+from xberg import extract, ExtractInput, ExtractInputKind, ExtractionConfig, OcrConfig
 from charset_normalizer import from_path
 
 from man_spider.lib.util import *
 from man_spider.lib.logger import *
 
 log = logging.getLogger("manspider.parser")
+
+# reusable extraction config: OCR images with tesseract (English)
+_XBERG_CONFIG = ExtractionConfig(ocr=OcrConfig(backend="tesseract", language=["eng"]))
 
 
 def is_text_file(filepath):
@@ -33,6 +38,20 @@ def extract_text_file(filepath):
     result = from_path(filepath)
     best = result.best()
     return str(best) if best else None
+
+
+def extract_document(filepath):
+    """
+    Extract text from a binary/document format (docx, pdf, xlsx, images, etc.) using xberg.
+    Returns the extracted content string, or None if xberg produced no result.
+    xberg's extract() is async, so we run it in a fresh event loop (each spider worker
+    is its own process, so there is no running loop to conflict with).
+    """
+    inp = ExtractInput(kind=ExtractInputKind.URI, uri="file://" + os.path.abspath(filepath))
+    result = asyncio.run(extract(inp, _XBERG_CONFIG))
+    if not result.results:
+        return None
+    return result.results[0].content
 
 
 def extract_strings_from_binary(filepath, min_length=4):
@@ -182,7 +201,7 @@ class FileParser:
         """
         Extracts text from a file.
         Uses charset-normalizer for plain text files (handles UTF-16, etc.)
-        Falls back to kreuzberg for binary formats (docx, pdf, xlsx, etc.)
+        Falls back to xberg for binary formats (docx, pdf, xlsx, etc.)
         """
 
         matches = dict()
@@ -196,13 +215,12 @@ class FileParser:
             text_content = extract_text_file(str(file))
             log.debug(f"Extracted text from {pretty_filename} using charset-normalizer")
         else:
-            # Try kreuzberg for document formats (docx, pdf, xlsx, etc.)
+            # Try xberg for document formats (docx, pdf, xlsx, etc.)
             try:
-                result = extract_file_sync(str(file))
-                text_content = result.content
+                text_content = extract_document(str(file))
             except Exception as e:
-                # Kreuzberg doesn't support this file type, try extracting raw strings
-                log.debug(f"Kreuzberg failed for {pretty_filename}: {e}, trying string extraction")
+                # xberg doesn't support this file type, try extracting raw strings
+                log.debug(f"xberg failed for {pretty_filename}: {e}, trying string extraction")
                 text_content = extract_strings_from_binary(str(file))
 
         # Guard against None content

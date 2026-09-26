@@ -1,8 +1,6 @@
-import asyncio
 import pytest
 from pathlib import Path
-from kreuzberg import extract_file, ExtractionConfig, OcrConfig
-from man_spider.lib.parser.parser import is_text_file, extract_text_file
+from man_spider.lib.parser.parser import extract_document, is_text_file, extract_text_file
 
 TESTDATA = Path(__file__).parent.parent / "testdata"
 
@@ -19,13 +17,22 @@ TESTDATA = Path(__file__).parent.parent / "testdata"
     ],
 )
 def test_extract_password(filename):
-    """Extract text from test files and verify Password123 is found."""
-    filepath = TESTDATA / filename
-    config = None
-    if filename.endswith((".png", ".jpg", ".jpeg")):
-        config = ExtractionConfig(ocr=OcrConfig(backend="tesseract", language="eng"))
-    result = asyncio.run(extract_file(str(filepath), config=config))
-    assert "Password123" in result.content, f"Password123 not found in {filename}: {result.content[:200]}"
+    """Extract text from document/binary formats via xberg and verify Password123 is found."""
+    content = extract_document(str(TESTDATA / filename))
+    assert content is not None, f"No content extracted from {filename}"
+    assert "Password123" in content, f"Password123 not found in {filename}: {content[:200]}"
+
+
+def test_ocr_dark_background():
+    """
+    Regression test: light text on a dark background must still OCR correctly.
+    A previous extraction backend returned empty content for these images (its
+    binarization wiped light-on-dark glyphs), which is why we moved to xberg.
+    See issue #119.
+    """
+    content = extract_document(str(TESTDATA / "test-darkbg.png"))
+    assert content is not None, "No content extracted from dark-background image"
+    assert "Password123" in content, f"Password123 not found in dark-background image: {content[:200]}"
 
 
 @pytest.mark.parametrize(
