@@ -9,7 +9,7 @@ license = {text = "GPL-3.0"}
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "kreuzberg>=4.2.9,<4.4",
+    "xberg>=1.2.9",
     "impacket",
     "charset-normalizer",
 ]
@@ -23,7 +23,7 @@ manspider = "man_spider.manspider:main"
 
 [tool.ruff]
 line-length = 119
-exclude = ["kreuzberg", "uv", ".venv"]
+exclude = ["xberg", "uv", ".venv"]
 lint.select = ["E", "F"]
 lint.ignore = ["E402", "E711", "E712", "E713", "E721", "E722", "E741", "F403", "F405", "F841", "E501"]
 

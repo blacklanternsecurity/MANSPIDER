@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+
+# Text-extraction cache dir
+.xberg/
