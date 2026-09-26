@@ -118,6 +118,7 @@ class SMBClient:
                 except Exception as e:
                     log.debug(f"{self.server}: Error getting DNS domain: {e}")
                     self.dns_domain = self.domain if self.domain else ""
+                self.domain = self.domain if self.domain else self.dns_domain
 
         except Exception as e:
             log.debug(f"{self.server}: Error getting hostname: {e}")
