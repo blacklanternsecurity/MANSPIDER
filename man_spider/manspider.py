@@ -17,7 +17,10 @@ log = logging.getLogger("manspider")
 log.setLevel(logging.INFO)
 
 
-def go(options):
+def go(options, log_queue=None):
+
+    log_level = logging.DEBUG if options.verbose else logging.INFO
+    configure_logging(log_queue, level=log_level)
 
     log.info("MANSPIDER command executed: " + " ".join(sys.argv))
 
@@ -42,7 +45,7 @@ def go(options):
         log.info(f"Skipping files larger than {bytes_to_human(options.max_filesize)}")
         log.info(f"Using {options.threads:,} threads")
 
-        manspider = MANSPIDER(options)
+        manspider = MANSPIDER(options, log_queue=log_queue)
         manspider.start()
 
     except KeyboardInterrupt:
@@ -81,6 +84,9 @@ def load_content_wordlist(filepath, options):
 def main():
 
     interrupted = False
+    listener = None
+    log_queue = None
+    p = None
 
     examples = """
 
@@ -209,6 +215,17 @@ def main():
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="show debugging messages")
     parser.add_argument(
+        "--noise-filter",
+        choices=["moderate", "aggressive"],
+        default=None,
+        metavar="MODE",
+        help=(
+            "filter out common Windows system noise to reduce clutter. "
+            "moderate: skips PolicyDefinitions, WinSxS, Servicing + .adml/.admx/.mui/.mof/.cat/.manifest files. "
+            "aggressive: also skips System32, SysWOW64, Assembly, Fonts, Spool, Windows Defender."
+        ),
+    )
+    parser.add_argument(
         "--wordlist",
         default=None,
         metavar="FILE",
@@ -299,13 +316,26 @@ def main():
         else:
             options.start_path = None
 
+        # apply built-in noise filter presets
+        if options.noise_filter:
+            from man_spider.lib.spiderling import NOISE_DIRS_MODERATE, NOISE_DIRS_AGGRESSIVE, NOISE_EXTENSIONS
+
+            noise_dirs = NOISE_DIRS_MODERATE if options.noise_filter == "moderate" else NOISE_DIRS_AGGRESSIVE
+            options.exclude_dirnames = list(set(options.exclude_dirnames + [d.lower() for d in noise_dirs]))
+            # ensure extension format is correct (dot prefix)
+            noise_exts = [e if e.startswith(".") else f".{e}" for e in NOISE_EXTENSIONS]
+            options.exclude_extensions = list(set(options.exclude_extensions + noise_exts))
+
         # deduplicate targets
         targets = set()
         [[targets.add(t) for t in g] for g in options.targets]
         options.targets = list(targets)
 
-        p = multiprocessing.Process(target=go, args=(options,), daemon=False)
+        ctx = multiprocessing.get_context()
+        log_queue = ctx.Queue()
+        p = ctx.Process(target=go, args=(options, log_queue), daemon=False)
         p.start()
+        listener = CustomQueueListener(log_queue, console)
         listener.start()
 
     except argparse.ArgumentError as e:
@@ -331,12 +361,20 @@ def main():
         sleep(1)
         try:
             # wait for go to finish
-            p.join()
+            if p is not None:
+                p.join()
         except:
             pass
         try:
             # stop the log listener
-            listener.stop()
+            if listener is not None:
+                listener.stop()
+        except:
+            pass
+        try:
+            if log_queue is not None:
+                log_queue.close()
+                log_queue.join_thread()
         except:
             pass
 
