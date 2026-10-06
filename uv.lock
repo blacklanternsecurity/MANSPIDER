@@ -274,7 +274,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -351,14 +351,14 @@ wheels = [
 
 [[package]]
 name = "kreuzberg"
-version = "4.3.8"
+version = "4.10.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f1/e7/b2ff921982e9ea54955a429bb3e7076036667fcaef7cbdf6a06adc093fb0/kreuzberg-4.3.8.tar.gz", hash = "sha256:8d3c61d1aeb54d986489da817135c3429f379c7fe12030de71875e4ba640e20d", size = 1711369, upload-time = "2026-02-21T15:14:45.636Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/44/46/e1b226760e91b519e929b44fae2d7d8e3f8db407b9006a294f18c7861be0/kreuzberg-4.10.4.tar.gz", hash = "sha256:d4b921972c5f0cdb471ddcb7e4a463c98d006132b3fbfc52607b5c9be0368ec1", size = 2246384, upload-time = "2026-09-21T06:11:08.184Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/56/84/f4a44c68a614a417d5a2ee1a0cec627bba9d45729b9cdf4ded250addbdd8/kreuzberg-4.3.8-cp310-abi3-macosx_14_0_arm64.whl", hash = "sha256:5b8873400b0e998331fb4aabaec46501d0d2f0bc9e266416b8c2eae9c03969c5", size = 31552759, upload-time = "2026-02-21T15:14:32.237Z" },
-    { url = "https://files.pythonhosted.org/packages/38/4c/0c8bcbca157489db2d6393b41f5a9683a050d7585cebdebcf8453a3fe822/kreuzberg-4.3.8-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3b33763bd6205699ef0f0b84e5f81d6cd7f90ee4d910567d22f4389e6ec99651", size = 35757848, upload-time = "2026-02-21T15:14:36.024Z" },
-    { url = "https://files.pythonhosted.org/packages/37/60/b5a55f0ac592330eb0c1a6607d238fb2b2a1b555f91e2d19e2893ce31a46/kreuzberg-4.3.8-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:2a5582dc8acf7ee12d3071c8196062fc5c1e0f377540bb6556e8dffcf867ae8e", size = 34858965, upload-time = "2026-02-21T15:14:39.465Z" },
-    { url = "https://files.pythonhosted.org/packages/85/50/92d990ca7295a16b1626a716365b2c1b3d10584a8da4556749a19c16e38e/kreuzberg-4.3.8-cp310-abi3-win_amd64.whl", hash = "sha256:2c18870cf10119438c6562fed4722fb020dd6b06b6c45cc9e3d19973ccdc1467", size = 37434156, upload-time = "2026-02-21T15:14:42.977Z" },
+    { url = "https://files.pythonhosted.org/packages/91/31/82d974e926093a98b7e15a426ccd6d7118c768969fbf630833c0e8ddaf9f/kreuzberg-4.10.4-cp310-abi3-macosx_14_0_arm64.whl", hash = "sha256:d4985f90ddefce970dc3074a26ca0d748b1238c553b042eebb60e9ad58411220", size = 31349553, upload-time = "2026-09-21T06:10:55.874Z" },
+    { url = "https://files.pythonhosted.org/packages/50/1f/08d0295e56dba9bd56270239669a3a55aa272d0f240b7eaaea365b5ccae6/kreuzberg-4.10.4-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:6dcf59bdf18aa210a6cc4379826e0c907e588bac0dab4a81b4b8426f36d2b707", size = 36631458, upload-time = "2026-09-21T06:10:59.378Z" },
+    { url = "https://files.pythonhosted.org/packages/06/60/c73891ea355f34562d6529ed16d78b6cd8801ed01211fecd931f9b6e85c1/kreuzberg-4.10.4-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:08c3c2af91648c84e8af5ce1973307d01c33f400096cf78bec44742f02b6583e", size = 39018490, upload-time = "2026-09-21T06:11:02.919Z" },
+    { url = "https://files.pythonhosted.org/packages/47/63/10cb418d88bde8d12f4bd055a7a3a251bcdd4d4d4fafcfdda8c6164849d2/kreuzberg-4.10.4-cp310-abi3-win_amd64.whl", hash = "sha256:3bc0c9efee539c2df06dffe9165884c1d090d0a045c59a7e1161636302fc2aa4", size = 36672682, upload-time = "2026-09-21T06:11:05.59Z" },
 ]
 
 [[package]]
@@ -406,7 +406,7 @@ dev = [
 requires-dist = [
     { name = "charset-normalizer" },
     { name = "impacket" },
-    { name = "kreuzberg", specifier = ">=4.2.9,<4.4" },
+    { name = "kreuzberg", specifier = ">=4.2.9,<4.11" },
 ]
 
 [package.metadata.requires-dev]
