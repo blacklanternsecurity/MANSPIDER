@@ -28,7 +28,7 @@ def save_file_to_loot(remote_file, loot_dir):
         log.warning(f"Error saving {remote_file}")
 
 
-def parse_file_worker(file, parser, no_download, loot_dir, log_queue, log_level):
+def parse_file_worker(file, parser, no_download, loot_dir, log_queue, log_level, results_queue=None, json_enabled=False):
     """Parse one file without serializing the live Spiderling or SMB connection."""
 
     configure_logging(log_queue, level=log_level)
@@ -39,9 +39,17 @@ def parse_file_worker(file, parser, no_download, loot_dir, log_queue, log_level)
                 save_file_to_loot(file, loot_dir)
             else:
                 file.tmp_filename.unlink()
+            base = {"target": str(file.target), "share": file.share, "path": file.name, "size": file.size}
         else:
             log.debug(f"Found file: {file}")
             matches = parser.parse_file(file, file)
+            base = {"target": str(file), "share": "", "path": str(file), "size": None}
+
+        # emit content-match records to the parent for JSON output
+        if json_enabled and results_queue is not None and matches:
+            for record in matches:
+                results_queue.put(SpiderlingMessage("m", base["target"], {**base, **record}))
+
         return matches
     except Exception as e:
         if log.level <= logging.DEBUG:
@@ -196,6 +204,8 @@ class Spiderling:
                             self.parent.loot_dir,
                             self.parent.log_queue,
                             self.parent.log_level,
+                            self.parent.spiderling_queue,
+                            bool(self.parent.json_file),
                         ),
                     )
                     self.parser_process.start()
@@ -259,6 +269,8 @@ class Spiderling:
             self.parent.loot_dir,
             self.parent.log_queue,
             self.parent.log_level,
+            self.parent.spiderling_queue,
+            bool(self.parent.json_file),
         )
 
     @property
@@ -437,6 +449,23 @@ class Spiderling:
         else:
             log.info(label)
 
+        if self.parent.json_file:
+            self.message_parent(
+                "m",
+                {
+                    "target": str(self.target),
+                    "share": share,
+                    "path": name,
+                    "size": size,
+                    "match_type": rule.location if rule is not None else "user",
+                    "rule": rule.name if rule is not None else "user-filter",
+                    "triage": rule.triage if rule is not None else "yellow",
+                    "pattern": None,
+                    "count": None,
+                    "context": None,
+                },
+            )
+
     def path_match(self, file):
         """
         Based on whether "or" logic is enabled, return True or False
@@ -572,6 +601,8 @@ class Spiderling:
                     self.parent.loot_dir,
                     self.parent.log_queue,
                     self.parent.log_level,
+                    self.parent.spiderling_queue,
+                    bool(self.parent.json_file),
                 ),
             ):
                 pass

@@ -1,4 +1,5 @@
 import re
+import json
 import queue
 import logging
 from time import sleep
@@ -48,6 +49,10 @@ class MANSPIDER:
         self.dir_blacklist = options.exclude_dirnames
 
         self.no_download = options.no_download
+
+        # JSON Lines output (None to disable); opened lazily in the parent process
+        self.json_file = getattr(options, "json", None)
+        self._json_fh = None
 
         # applies "or" logic instead of "and"
         # e.g. file is downloaded if filename OR extension OR content match
@@ -122,6 +127,8 @@ class MANSPIDER:
         state = self.__dict__.copy()
         state["spiderling_pool"] = [None] * self.threads
         state["smb_client_cache"] = {}
+        # file handles aren't picklable and are only used in the parent
+        state["_json_fh"] = None
         return state
 
     def start(self):
@@ -157,6 +164,8 @@ class MANSPIDER:
 
         # make sure the queue is empty
         self.check_spiderling_queue()
+
+        self.close_json()
 
     def init_file_extensions(self, file_extensions):
         """
@@ -208,6 +217,9 @@ class MANSPIDER:
         Process messages from spiderlings
         Log messages, errors, files, etc.
         """
+        if message.type == "m":
+            self.write_json_record(message.content)
+            return
         if message.type == "a":
             if message.content == False:
                 self.failed_logons += 1
@@ -220,6 +232,26 @@ class MANSPIDER:
                 self.password = ""
                 self.nthash = ""
                 self.domain = ""
+
+    def write_json_record(self, record):
+        """Append one match record to the JSON Lines output file (parent process only)."""
+        if not self.json_file:
+            return
+        try:
+            if self._json_fh is None:
+                self._json_fh = open(self.json_file, "a", encoding="utf-8")
+            self._json_fh.write(json.dumps(record, default=str) + "\n")
+            self._json_fh.flush()
+        except Exception as e:
+            log.warning(f"Error writing JSON record: {e}")
+
+    def close_json(self):
+        if self._json_fh is not None:
+            try:
+                self._json_fh.close()
+            except Exception:
+                pass
+            self._json_fh = None
 
     def lockout_threshold(self):
         """

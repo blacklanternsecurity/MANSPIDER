@@ -200,6 +200,14 @@ def main():
         action="store_true",
         help="combine the curated default classification rules with your own filters (by default, curated rules are used only when no filters are given)",
     )
+    parser.add_argument(
+        "--json",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="FILE",
+        help="write matches as JSON Lines to FILE (one JSON object per line); if FILE is omitted, writes to ~/.manspider/manspider_<date>.jsonl",
+    )
     parser.add_argument("-q", "--quiet", action="store_true", help="don't display matching file content")
     parser.add_argument("-n", "--no-download", action="store_true", help="don't download matching files")
     parser.add_argument("-mfail", "--max-failed-logons", type=int, help="limit failed logons", metavar="INT")
@@ -314,6 +322,14 @@ def main():
             # ensure extension format is correct (dot prefix)
             noise_exts = [e if e.startswith(".") else f".{e}" for e in NOISE_EXTENSIONS]
             options.exclude_extensions = list(set(options.exclude_extensions + noise_exts))
+
+        # resolve the JSON Lines output path (--json with no argument -> default path)
+        if options.json is not None:
+            if options.json == "":
+                json_dir = pathlib.Path.home() / ".manspider"
+                json_dir.mkdir(parents=True, exist_ok=True)
+                options.json = str(json_dir / f"manspider_{datetime.now().strftime('%m-%d-%Y')}.jsonl")
+            log.info(f"Writing JSON Lines output to {options.json}")
 
         # deduplicate targets
         targets = set()
