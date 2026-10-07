@@ -286,6 +286,8 @@ class Spiderling:
         # First, yield enumerated shares that match filters
         for share in self.smb_client.shares:
             if self.share_match(share):
+                if self.dfs_duplicate(share):
+                    continue
                 yielded_shares.add(share.lower())
                 yield share
 
@@ -299,6 +301,32 @@ class Spiderling:
                         log.debug(f"{self.target}: Adding non-enumerated share from whitelist: {share}")
                         yielded_shares.add(share.lower())
                         yield share
+
+    def dfs_duplicate(self, share):
+        """
+        Return True if this share is a DFS replica whose namespace has already been
+        claimed by another target, so it should be skipped to avoid duplicate scanning.
+        """
+        dfs_dict = getattr(self.parent, "dfs_shares_dict", None)
+        claimed = getattr(self.parent, "dfs_claimed", None)
+        if not dfs_dict or claimed is None:
+            return False
+
+        key = f"\\\\{self.target.host}\\{share}".lower()
+        namespace = dfs_dict.get(key)
+        if namespace is None:
+            return False
+
+        # first target to claim the namespace scans it; others skip
+        owner = claimed.setdefault(namespace, str(self.target))
+        if owner != str(self.target):
+            log.info(
+                f"{self.target}: Skipping DFS replica {share} "
+                f"(namespace {namespace} already scanned via {owner})"
+            )
+            return True
+        log.debug(f"{self.target}: Scanning {share} as DFS namespace {namespace}")
+        return False
 
     def list_files(self, share, path="", depth=0, tries=2):
         """

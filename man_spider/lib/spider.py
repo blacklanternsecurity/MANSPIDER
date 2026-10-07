@@ -10,6 +10,7 @@ from man_spider.lib.spiderling import *
 from man_spider.lib.parser import FileParser
 from man_spider.lib.logger import configure_logging
 from man_spider.lib.rules import load_default_rules, RuleSet
+from man_spider.lib.util import Target
 
 # set up logging
 log = logging.getLogger("manspider")
@@ -120,6 +121,66 @@ class MANSPIDER:
             log.info(f"Filtering files modified after: {self.modified_after.strftime('%Y-%m-%d')}")
         if self.modified_before:
             log.info(f"Filtering files modified before: {self.modified_before.strftime('%Y-%m-%d')}")
+
+        # automatic domain-based DFS discovery (when domain credentials are in use)
+        self.init_dfs()
+
+    def init_dfs(self):
+        """
+        Discover domain-based DFS namespaces via LDAP (only when domain creds are set).
+        Adds DFS backing servers as scan targets and sets up a shared claim map so that
+        replicas of the same namespace are scanned only once.
+        """
+        self.dfs_shares_dict = {}
+        self.dfs_namespace_paths = []
+        self.dfs_claimed = None
+
+        # requires domain credentials and at least one remote (SMB) target
+        if not self.domain:
+            return
+        if not any(isinstance(t, Target) for t in self.targets):
+            return
+
+        from man_spider.lib.dfs import discover_dfs_shares, build_dfs_maps
+
+        log.info("Domain credentials detected; discovering DFS namespaces via LDAP...")
+        try:
+            dfs_shares = discover_dfs_shares(
+                self.domain,
+                self.dc_ip,
+                self.username,
+                self.password,
+                self.nthash,
+                self.use_kerberos,
+                self.aes_key or "",
+            )
+        except Exception as e:
+            log.warning(f"DFS discovery failed: {e}")
+            return
+
+        if not dfs_shares:
+            log.info("No DFS namespaces discovered")
+            return
+
+        self.dfs_shares_dict, self.dfs_namespace_paths, backing_hosts = build_dfs_maps(dfs_shares, self.domain)
+        log.info(
+            f"Discovered {len(self.dfs_shares_dict)} DFS share path(s) across "
+            f"{len(self.dfs_namespace_paths)} namespace(s)"
+        )
+
+        # add DFS backing servers as scan targets so DFS-published shares aren't missed
+        existing = {t.host.lower() for t in self.targets if isinstance(t, Target)}
+        added = 0
+        for host in sorted(backing_hosts):
+            if host.lower() not in existing:
+                self.targets.append(Target(host=host))
+                existing.add(host.lower())
+                added += 1
+        if added:
+            log.info(f"Added {added} DFS backing server(s) as scan targets")
+
+        # shared across spiderling processes: first replica to claim a namespace scans it
+        self.dfs_claimed = multiprocessing.Manager().dict()
 
     def __getstate__(self):
         """Exclude parent-only runtime objects when serializing a spiderling's configuration."""
