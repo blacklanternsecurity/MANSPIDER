@@ -1,0 +1,14 @@
+[[ClassifierRules]]
+EnumerationScope = "FileEnumeration"
+RuleName = "KeepCyberArkByExtension"
+MatchAction = "Snaffle"
+Description = "Files with these extensions are QUITE interesting."
+MatchLocation = "FileExtension"
+WordListType = "Exact"
+MatchLength = 0
+WordList = [ 
+	"\\.cred",
+	"\\.pass"
+]
+Triage = "Red"
+

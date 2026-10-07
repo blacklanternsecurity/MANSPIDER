@@ -32,7 +32,7 @@ def test_spiderling_logging_and_messages_across_processes(start_method, tmp_path
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.count("MANSPIDER command executed") == 1
-    assert result.stdout.count('example.txt: matched "synthetic-content" 1 times') == 2
+    assert result.stdout.count('example.txt: [YELLOW] matched "synthetic-content" 1 times (rule: user-content)') == 2
     assert result.stdout.count("synthetic child console message") == 2
     assert "processed messages: 2" in result.stdout
     assert "cannot pickle 'weakref.ReferenceType' object" not in result.stderr
@@ -41,5 +41,5 @@ def test_spiderling_logging_and_messages_across_processes(start_method, tmp_path
     assert len(logfiles) == 1
     logfile_content = logfiles[0].read_text(encoding="utf-8")
     assert logfile_content.count("MANSPIDER command executed") == 1
-    assert logfile_content.count('example.txt: matched "synthetic-content" 1 times') == 2
+    assert logfile_content.count('example.txt: [YELLOW] matched "synthetic-content" 1 times (rule: user-content)') == 2
     assert logfile_content.count("synthetic child console message") == 2

@@ -44,6 +44,14 @@ class ColoredFormatter(logging.Formatter):
 
         return logging.Formatter.format(self, colored_record)
 
+    # triage severities (Snaffler-style); black == most interesting
+    triage_color_mapping = {
+        "green": 118,  # green
+        "yellow": 226,  # yellow
+        "red": 196,  # red
+        "black": 199,  # hot pink — crown jewels, stands out hardest
+    }
+
     @classmethod
     def green(cls, s):
 
@@ -58,6 +66,12 @@ class ColoredFormatter(logging.Formatter):
     def color(cls, s, level="INFO"):
 
         color = cls.color_mapping.get(level)
+        return f"{cls.prefix}{color}m{s}{cls.suffix}"
+
+    @classmethod
+    def triage(cls, s, triage="yellow"):
+        """Color a string by its triage severity."""
+        color = cls.triage_color_mapping.get(triage, 15)
         return f"{cls.prefix}{color}m{s}{cls.suffix}"
 
 

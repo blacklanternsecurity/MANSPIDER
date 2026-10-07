@@ -11,7 +11,7 @@ from man_spider.lib.file import *
 from man_spider.lib.util import *
 from man_spider.lib.errors import *
 from man_spider.lib.processpool import *
-from man_spider.lib.logger import configure_logging
+from man_spider.lib.logger import configure_logging, ColoredFormatter
 
 
 log = logging.getLogger("manspider.spiderling")
@@ -172,7 +172,7 @@ class Spiderling:
 
         # local files
         if self.local:
-            if self.parent.parser.content_filters:
+            if self.parent.parser.has_content_rules:
                 self.parse_local_files(self.files)
             else:
                 # just list the files
@@ -182,7 +182,7 @@ class Spiderling:
             # remote files
             for file in self.files:
                 # if content searching is enabled, parse the file
-                if self.parent.parser.content_filters:
+                if self.parent.parser.has_content_rules:
                     try:
                         self.parser_process.join()
                     except AttributeError:
@@ -200,9 +200,8 @@ class Spiderling:
                     )
                     self.parser_process.start()
 
-                # otherwise, just save it
+                # otherwise, just save it (the match was already reported during enumeration)
                 elif not self.local:
-                    log.info(f"{self.target}: {file.share}\\{file.name} ({bytes_to_human(file.size)})")
                     if not self.parent.no_download:
                         self.save_file(file)
 
@@ -231,9 +230,10 @@ class Spiderling:
                         log.debug(f"Skipping {file}: does not match date filters")
                         continue
 
-                if self.path_match(file) or (self.parent.or_logic and self.parent.parser.content_filters):
-                    if self.path_match(file):
-                        log.debug(pathlib.Path(file).relative_to(self.target))
+                take, rule, explicit = self.classify(pathlib.Path(file).name, str(file))
+                if take or (self.parent.or_logic and self.parent.parser.has_content_rules):
+                    if explicit:
+                        self.report_match("", str(file), rule)
                     if not self.is_binary_file(file):
                         yield file
                 else:
@@ -242,7 +242,7 @@ class Spiderling:
         else:
             for share in self.shares:
                 for remote_file in self.list_files(share):
-                    if not self.parent.no_download or self.parent.parser.content_filters:
+                    if not self.parent.no_download or self.parent.parser.has_content_rules:
                         self.get_file(remote_file)
                     yield remote_file
 
@@ -324,7 +324,8 @@ class Spiderling:
                         log.debug(f"{self.target}: Skipping {share}{full_path}: extension is blacklisted")
                         continue
 
-                    if not self.path_match(name):
+                    take, matched_rule, explicit = self.classify(name, full_path)
+                    if not take:
                         if not (
                             # all of these have to be true in order to get past this point
                             # "or logic" is enabled
@@ -334,7 +335,7 @@ class Spiderling:
                             (not self.is_binary_file(name))
                             and
                             # and content filters are enabled
-                            self.parent.parser.content_filters
+                            self.parent.parser.has_content_rules
                         ):
                             log.debug(f"{self.target}: Skipping {share}{full_path}: filename/extensions do not match")
                             continue
@@ -361,26 +362,80 @@ class Spiderling:
                     # make the RemoteFile object (the file won't be read yet)
                     full_path_fixed = full_path.lstrip("\\")
                     remote_file = RemoteFile(full_path_fixed, share, self.target, size=filesize)
+                    remote_file.rule = matched_rule
+
+                    # report an explicit name/extension/path match up front
+                    if explicit:
+                        self.report_match(remote_file.share, remote_file.name, matched_rule, size=filesize)
 
                     # if it's a non-empty file that's smaller than the size limit
                     if filesize > 0 and filesize < self.parent.max_filesize:
-                        # if it matched filename/extension filters and we're downloading files
-                        if (
-                            self.parent.file_extensions or self.parent.filename_filters
-                        ) and not self.parent.no_download:
-                            # but the extension is marked as "don't parse"
-                            if self.is_binary_file(name):
-                                # don't parse it, instead save it and continue
-                                log.info(f"{self.target}: {remote_file.share}\\{remote_file.name}")
-                                if self.get_file(remote_file):
-                                    self.save_file(remote_file)
-                                    continue
+                        # an explicitly-matched file with a "don't parse" extension is
+                        # saved directly rather than content-parsed
+                        if explicit and not self.parent.no_download and self.is_binary_file(name):
+                            if self.get_file(remote_file):
+                                self.save_file(remote_file)
+                                continue
 
                         # file is ready to be parsed
                         yield remote_file
 
                     else:
                         log.debug(f"{self.target}: {full_path} is either empty or too large")
+
+    def classify(self, name, full_path):
+        """
+        Decide whether a file is of interest, combining user filters and curated rules.
+
+        Returns (take, rule, explicit):
+            take     -- True if the file should be processed (fetched/parsed).
+                        When there are no user filename/extension filters this is
+                        True for everything, so content rules see every file
+                        (same as a content-only search today).
+            rule     -- the highest-severity curated file-rule that matched, or None
+            explicit -- True if the file *specifically* matched a name/extension/path
+                        rule or a user filename/extension filter (as opposed to merely
+                        being swept up by match-all). Drives reporting and whether a
+                        binary file is saved directly.
+        """
+        # evaluate curated rules (filename / extension / path locations)
+        ext = "".join(pathlib.Path(name).suffixes).lower()
+        matched_rule = None
+        for rule in self.parent.rules.file_rules:
+            if rule.location == "filename":
+                value = name
+            elif rule.location == "extension":
+                value = ext
+            else:  # path
+                value = full_path
+            if rule.matches(value):
+                if matched_rule is None or rule.severity > matched_rule.severity:
+                    matched_rule = rule
+
+        # evaluate user-supplied filename/extension filters
+        has_user_nameext = bool(self.parent.filename_filters or self.parent.file_extensions)
+        user_nameext_match = self.path_match(name) if has_user_nameext else False
+
+        explicit = (matched_rule is not None) or user_nameext_match
+
+        if has_user_nameext:
+            # honor the user's AND/OR filename/extension logic exactly
+            take = user_nameext_match
+        else:
+            # no user name/extension filters: match all (content rules handle the rest)
+            take = True
+
+        return take, matched_rule, explicit
+
+    def report_match(self, share, name, rule, size=None):
+        """Log a file that matched a name/extension/path filter, colored by triage."""
+        label = f"{self.target}: {share}\\{name}" if share else f"{self.target}: {name}"
+        if size is not None:
+            label += f" ({bytes_to_human(size)})"
+        if rule is not None:
+            log.info(ColoredFormatter.triage(f"[{rule.triage.upper()}] {label} (rule: {rule.name})", rule.triage))
+        else:
+            log.info(label)
 
     def path_match(self, file):
         """

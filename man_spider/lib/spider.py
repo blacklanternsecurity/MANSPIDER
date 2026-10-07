@@ -8,6 +8,7 @@ from pathlib import Path
 from man_spider.lib.spiderling import *
 from man_spider.lib.parser import FileParser
 from man_spider.lib.logger import configure_logging
+from man_spider.lib.rules import load_default_rules, RuleSet
 
 # set up logging
 log = logging.getLogger("manspider")
@@ -60,7 +61,28 @@ class MANSPIDER:
             log.info(f"Searching by file extension: {extensions_str}")
 
         self.init_filename_filters(options.filenames)
-        self.parser = FileParser(options.content, quiet=self.quiet)
+
+        # Decide the active curated rule set.
+        #   - no user filters at all        -> use curated defaults
+        #   - user filters + --use-default-rules -> combine both
+        #   - user filters only             -> user filters only (no curated)
+        user_has_filters = bool(
+            options.filenames
+            or options.extensions
+            or options.exclude_extensions
+            or options.content
+        )
+        use_defaults = getattr(options, "use_default_rules", False)
+        self.rules = RuleSet()
+        content_rules = []
+        if (not user_has_filters) or use_defaults:
+            default_rules = load_default_rules()
+            # file-location rules (filename/extension/path) gate file selection
+            for rule in default_rules.file_rules:
+                self.rules.add(rule)
+            content_rules = default_rules.content
+
+        self.parser = FileParser(options.content, content_rules=content_rules, quiet=self.quiet)
 
         self.failed_logons = 0
 

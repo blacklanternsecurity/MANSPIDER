@@ -1,0 +1,36 @@
+[[ClassifierRules]]
+EnumerationScope = "FileEnumeration"
+RuleName = "DiscardByFileExtension"
+MatchAction = "Discard"
+Description = "Skip any further scanning for files with these extensions."
+MatchLocation = "FileExtension"
+WordListType = "Exact"
+MatchLength = 0
+WordList = ["\\.bmp",
+"\\.eps",
+"\\.gif",
+"\\.ico",
+"\\.jfi",
+"\\.jfif",
+"\\.jif",
+"\\.jpe",
+"\\.jpeg",
+"\\.jpg",
+"\\.png",
+"\\.psd",
+"\\.svg",
+"\\.tif",
+"\\.tiff",
+"\\.webp",
+"\\.xcf",
+"\\.ttf",
+"\\.otf",
+"\\.lock",
+"\\.css",
+"\\.less",
+"\\.admx",
+"\\.adml",
+"\\.xsd",
+"\\.nse",
+"\\.xsl"]
+Triage = "Green"

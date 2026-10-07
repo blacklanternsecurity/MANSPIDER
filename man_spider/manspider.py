@@ -32,10 +32,9 @@ def go(options, log_queue=None):
             )
             sleep(2)
 
-        # exit if no filters were specified
+        # with no filters specified, fall back to the curated default rule set
         if not (options.filenames or options.extensions or options.exclude_extensions or options.content):
-            log.error("Please specify at least one of --filenames, --content, --extensions, or --exclude-extensions")
-            return
+            log.info("No filters specified; using the curated default classification rules")
 
         # exit if --maxdepth is invalid
         if options.maxdepth <= 0:
@@ -195,6 +194,11 @@ def main():
         default=[],
         help="don't search directories containing these strings (multiple supported)",
         metavar="DIR",
+    )
+    parser.add_argument(
+        "--use-default-rules",
+        action="store_true",
+        help="combine the curated default classification rules with your own filters (by default, curated rules are used only when no filters are given)",
     )
     parser.add_argument("-q", "--quiet", action="store_true", help="don't display matching file content")
     parser.add_argument("-n", "--no-download", action="store_true", help="don't download matching files")

@@ -1,0 +1,29 @@
+[[ClassifierRules]]
+EnumerationScope = "DirectoryEnumeration"
+RuleName = "DiscardLargeFalsePosDirs"
+MatchAction = "Discard"
+Description = "File paths that will be skipped entirely."
+MatchLocation = "FilePath"
+WordListType = "Contains"
+MatchLength = 0
+WordList = [
+	"\\\\puppet\\\\share\\\\doc",
+	"\\\\lib\\\\ruby",
+	"\\\\lib\\\\site-packages",
+	"\\\\usr\\\\share\\\\doc",
+	"node_modules",
+	"vendor\\\\bundle",
+	"vendor\\\\cache",
+	"\\\\doc\\\\openssl",
+	"Anaconda3\\\\Lib\\\\test",
+	"WindowsPowerShell\\\\Modules",
+	"Python\\d*\\\\Lib",
+	"Reference Assemblies\\\\Microsoft\\\\Framework\\\\.NETFramework",
+	"dotnet\\\\sdk",
+	"dotnet\\\\shared",
+	"Modules\\\\Microsoft\\.PowerShell\\.Security",
+	"Windows\\\\assembly"
+]
+Triage = "Green"
+
+

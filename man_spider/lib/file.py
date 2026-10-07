@@ -17,6 +17,8 @@ class RemoteFile:
         self.name = name
         self.size = size
         self.smb_client = None
+        # curated classification rule that matched this file (if any)
+        self.rule = None
 
         file_suffix = Path(name).suffix.lower()
         self.tmp_filename = Path("/tmp/.manspider") / (random_string(15) + file_suffix)

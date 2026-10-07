@@ -1,0 +1,20 @@
+[[ClassifierRules]]
+EnumerationScope = "ContentsEnumeration"
+RuleName = "KeepPassOrKeyInCode"
+MatchAction = "Snaffle"
+Description = "Files with contents matching these regexen are very interesting."
+MatchLocation = "FileContentAsString"
+WordListType = "Regex"
+MatchLength = 0
+WordList = ["passw?o?r?d\\s*=\\s*[\\'\\\"][^\\'\\\"]....",
+"api[Kk]ey\\s*=\\s*[\\'\\\"][^\\'\\\"]....",
+"passw?o?r?d?>\\s*[^\\s<]+\\s*<",
+"passw?o?r?d?>.{3,2000}</pass",
+"[\\s]+-passw?o?r?d?",
+"api[kK]ey>\\s*[^\\s<]+\\s*<",
+"[_\\-\\.]oauth\\s*=\\s*[\\'\\\"][^\\'\\\"]....",
+"client_secret\\s*=*\\s*",
+"<ExtendedMatchKey>ClientAuth",
+"GIUserPassword"
+]
+Triage = "Red"

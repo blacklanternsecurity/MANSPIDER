@@ -8,6 +8,7 @@ from charset_normalizer import from_path
 
 from man_spider.lib.util import *
 from man_spider.lib.logger import *
+from man_spider.lib.rules import Rule
 
 log = logging.getLogger("manspider.parser")
 
@@ -33,6 +34,17 @@ def extract_text_file(filepath):
     result = from_path(filepath)
     best = result.best()
     return str(best) if best else None
+
+
+def line_at(text, index, max_len=500):
+    """Return the (truncated) line of text containing the given character index."""
+    if text is None:
+        return None
+    start = text.rfind("\n", 0, index) + 1
+    end = text.find("\n", index)
+    if end < 0:
+        end = len(text)
+    return text[start:end].strip()[:max_len]
 
 
 def extract_strings_from_binary(filepath, min_length=4):
@@ -88,37 +100,53 @@ class FileParser:
         ".dylib",
     }
 
-    def __init__(self, filters, quiet=False):
-        self.init_content_filters(filters)
+    def __init__(self, filters, content_rules=None, quiet=False):
+        self.content_rules = []
+        self.init_content_filters(filters, content_rules)
         self.quiet = quiet
 
-    def init_content_filters(self, file_content):
+    def init_content_filters(self, file_content, content_rules=None):
         """
-        Get ready to search by file content
+        Get ready to search by file content.
+
+        User-supplied -c regexes become plain "user-content" rules (triage
+        yellow); curated Rule objects are appended as-is.
         """
 
-        # strings to look for in file content
-        # if empty, content is ignored
-        self.content_filters = []
+        # content Rule objects; if empty, content is ignored
+        self.content_rules = []
         for f in file_content:
             try:
-                self.content_filters.append(re.compile(f, re.I))
+                re.compile(f, re.I)  # validate before wrapping
             except re.error as e:
                 log.error(f'Unsupported file content regex "{f}": {e}')
                 sleep(1)
-        if self.content_filters:
-            content_filter_str = '"' + '", "'.join([f.pattern for f in self.content_filters]) + '"'
+                continue
+            self.content_rules.append(
+                Rule(name="user-content", triage="yellow", location="content", match_type="regex", patterns=[f])
+            )
+
+        if content_rules:
+            self.content_rules.extend(content_rules)
+
+        if file_content:
+            content_filter_str = '"' + '", "'.join(file_content) + '"'
             log.info(f"Searching by file content: {content_filter_str}")
+
+    @property
+    def has_content_rules(self):
+        return bool(self.content_rules)
 
     def match(self, file_content):
         """
-        Finds all regex matches in file content
+        Finds all regex matches in file content.
+        Yields (rule, compiled_pattern, (start, end)) for each hit.
         """
 
-        for _filter in self.content_filters:
-            for match in _filter.finditer(file_content):
-                # ( filter, (match_start_index, match_end_index) )
-                yield (_filter, match.span())
+        for rule in self.content_rules:
+            for rx in rule.regexes:
+                for match in rx.finditer(file_content):
+                    yield (rule, rx, match.span())
 
     def match_magic(self, file):
         """
@@ -165,7 +193,7 @@ class FileParser:
 
         log.debug(f"Parsing file: {pretty_filename}")
 
-        matches = dict()
+        matches = []
 
         try:
             matches = self.extract_text(file, pretty_filename=pretty_filename)
@@ -185,11 +213,9 @@ class FileParser:
         Falls back to kreuzberg for binary formats (docx, pdf, xlsx, etc.)
         """
 
-        matches = dict()
-
         # blacklist certain mime types
         if not self.match_magic(file):
-            return matches
+            return []
 
         # Try charset-normalizer first for text files (handles UTF-16, etc.)
         if is_text_file(str(file)):
@@ -207,7 +233,7 @@ class FileParser:
 
         # Guard against None content
         if text_content is None:
-            return matches
+            return []
 
         # Guard against binary garbage: if more than 1% of characters are
         # Unicode replacement chars (U+FFFD), the file was decoded incorrectly.
@@ -216,7 +242,7 @@ class FileParser:
             log.debug(f"High replacement char ratio in {pretty_filename}, falling back to string extraction")
             text_content = extract_strings_from_binary(str(file))
             if text_content is None:
-                return matches
+                return []
 
         # try to convert to UTF-8 for grep-friendliness
         try:
@@ -224,17 +250,37 @@ class FileParser:
         except Exception:
             pass
 
-        # count the matches
-        for _filter, match in self.match(text_content):
-            try:
-                matches[_filter] += 1
-            except KeyError:
-                matches[_filter] = 1
+        # count the matches, keyed by (rule, compiled pattern), remembering the first span
+        counts = dict()
+        first_span = dict()
+        for rule, rx, span in self.match(text_content):
+            key = (rule, rx)
+            counts[key] = counts.get(key, 0) + 1
+            if key not in first_span:
+                first_span[key] = span
 
-        for _filter, match_count in matches.items():
-            log.info(ColoredFormatter.green(f'{pretty_filename}: matched "{_filter.pattern}" {match_count:,} times'))
+        records = []
+        for (rule, rx), match_count in counts.items():
+            log.info(
+                ColoredFormatter.triage(
+                    f'{pretty_filename}: [{rule.triage.upper()}] matched "{rx.pattern}" '
+                    f'{match_count:,} times (rule: {rule.name})',
+                    rule.triage,
+                )
+            )
             # run grep for pretty output
             if not self.quiet:
-                self.grep(binary_content, _filter.pattern)
+                self.grep(binary_content, rx.pattern)
 
-        return matches
+            records.append(
+                {
+                    "match_type": "content",
+                    "triage": rule.triage,
+                    "rule": rule.name,
+                    "pattern": rx.pattern,
+                    "count": match_count,
+                    "context": line_at(text_content, first_span[(rule, rx)][0]),
+                }
+            )
+
+        return records

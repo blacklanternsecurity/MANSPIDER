@@ -1,0 +1,12 @@
+[[ClassifierRules]]
+EnumerationScope = "FileEnumeration"
+RuleName = "KeepInfraAsCodeByExtension"
+MatchAction = "Snaffle"
+Description = "Files with these extensions are very very interesting."
+MatchLocation = "FileExtension"
+WordListType = "Exact"
+MatchLength = 0
+WordList = [    "\\.cscfg",
+"\\.ucs",
+"\\.tfvars"]
+Triage = "Red"
