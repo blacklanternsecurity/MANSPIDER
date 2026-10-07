@@ -189,8 +189,8 @@ class Spiderling:
         else:
             # remote files
             for file in self.files:
-                # if content searching is enabled, parse the file
-                if self.parent.parser.has_content_rules:
+                # parse the file if content searching is enabled or it's a certificate
+                if self.parent.parser.should_parse(file.name):
                     try:
                         self.parser_process.join()
                     except AttributeError:
@@ -252,7 +252,7 @@ class Spiderling:
         else:
             for share in self.shares:
                 for remote_file in self.list_files(share):
-                    if not self.parent.no_download or self.parent.parser.has_content_rules:
+                    if not self.parent.no_download or self.parent.parser.should_parse(remote_file.name):
                         self.get_file(remote_file)
                     yield remote_file
 

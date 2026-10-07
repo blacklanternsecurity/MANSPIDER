@@ -9,6 +9,7 @@ from charset_normalizer import from_path
 from man_spider.lib.util import *
 from man_spider.lib.logger import *
 from man_spider.lib.rules import Rule
+from man_spider.lib.parser.certs import inspect_cert, CERT_EXTENSIONS
 
 log = logging.getLogger("manspider.parser")
 
@@ -137,6 +138,12 @@ class FileParser:
     def has_content_rules(self):
         return bool(self.content_rules)
 
+    def should_parse(self, filename):
+        """True if this file should be sent through the parser (content search or cert inspection)."""
+        if self.has_content_rules:
+            return True
+        return Path(filename).suffix.lower() in CERT_EXTENSIONS
+
     def match(self, file_content):
         """
         Finds all regex matches in file content.
@@ -216,6 +223,30 @@ class FileParser:
         # blacklist certain mime types
         if not self.match_magic(file):
             return []
+
+        # certificate / key material gets dedicated parsing (parse + report only)
+        cert_extension = Path(file).suffix.lower()
+        if cert_extension in CERT_EXTENSIONS:
+            result = inspect_cert(str(file), cert_extension)
+            if result is not None:
+                reasons, triage = result
+                context = "; ".join(reasons)
+                log.info(
+                    ColoredFormatter.triage(
+                        f"{pretty_filename}: [{triage.upper()}] certificate — {context}", triage
+                    )
+                )
+                return [
+                    {
+                        "match_type": "certificate",
+                        "triage": triage,
+                        "rule": "Certificate",
+                        "pattern": None,
+                        "count": None,
+                        "context": context,
+                    }
+                ]
+            # not a parseable cert — fall through to normal content extraction
 
         # Try charset-normalizer first for text files (handles UTF-16, etc.)
         if is_text_file(str(file)):

@@ -12,6 +12,7 @@ dependencies = [
     "kreuzberg>=4.2.9,<4.4",
     "impacket",
     "charset-normalizer",
+    "cryptography",
 ]
 
 [project.urls]
