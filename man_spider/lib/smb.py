@@ -5,7 +5,6 @@ from impacket.nmb import NetBIOSError, NetBIOSTimeout
 from impacket.smbconnection import SessionError, SMBConnection
 
 from man_spider.lib.errors import *
-from man_spider.lib.util import run_with_timeout
 
 # set up logging
 log = logging.getLogger("manspider.smb")
@@ -87,9 +86,7 @@ class SMBClient:
         Get the hostname from the SMB connection
         """
         try:
-            conn = run_with_timeout(
-                SMBConnection,
-                10,
+            conn = SMBConnection(
                 self.server,
                 self.server,
                 None,
@@ -145,9 +142,7 @@ class SMBClient:
 
         if self.conn is None or refresh:
             try:
-                self.conn = run_with_timeout(
-                    SMBConnection, 20, target_server, target_server, sess_port=self.port, timeout=20
-                )
+                self.conn = SMBConnection(target_server, target_server, sess_port=self.port, timeout=20)
             except Exception as e:
                 log.debug(impacket_error(e))
                 return None
@@ -163,12 +158,7 @@ class SMBClient:
                 log.debug(f'{target_server} ({self.server}): Authenticating as "{user_str}"')
 
                 if self.use_kerberos:
-                    # same DNS-hang risk as SMBConnection() itself: if dc_ip isn't
-                    # given, impacket has to locate the KDC on its own (DNS), which
-                    # isn't bounded by any timeout kwarg here either
-                    run_with_timeout(
-                        self.conn.kerberosLogin,
-                        20,
+                    self.conn.kerberosLogin(
                         self.username,
                         self.password,
                         self.domain,
@@ -214,12 +204,6 @@ class SMBClient:
                     self.password = ""
                     self.domain = ""
                     self.nthash = ""
-                    # guest/null sessions have no real principal, so Kerberos can
-                    # never succeed here -- without this, each fallback attempt
-                    # would repeat the full (now timeout-bounded, but still slow)
-                    # get_hostname() + SMBConnection() + kerberosLogin() sequence
-                    # for no reason, tripling the delay on every unreachable host
-                    self.use_kerberos = False
                     guest_success = self.login(refresh=True, first_try=False)
                     if not guest_success:
                         log.debug(f"{self.server}: Switching to null session")
@@ -276,6 +260,6 @@ class SMBClient:
         if type(e) in native_impacket_errors:
             e = impacket_error(e)
         if display:
-            log.warning(f"{resource_str}: {str(e)[:150]}")
+            log.debug(f"{resource_str}: {str(e)[:150]}")
 
         return e
