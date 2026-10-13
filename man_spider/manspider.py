@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 import pathlib
 import logging
@@ -125,6 +126,13 @@ def main():
         "--kerberos",
         action="store_true",
         help="Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters",
+    )
+    parser.add_argument(
+        "-K",
+        "--ccache",
+        action="store",
+        metavar="FILE",
+        help="Path to a Kerberos ccache file to use (sets KRB5CCNAME for this run; overrides any existing KRB5CCNAME env var)",
     )
     parser.add_argument(
         "-aesKey",
@@ -258,9 +266,45 @@ def main():
         if options.verbose:
             log.setLevel("DEBUG")
 
-        if options.kerberos and "KRB5CCNAME" not in os.environ:
-            log.error("KRB5CCNAME is not set in the environment")
-            sys.exit(1)
+        if options.kerberos:
+            if options.ccache:
+                # -K/--ccache was given: it takes priority over any existing KRB5CCNAME
+                ccache_path = pathlib.Path(options.ccache).expanduser()
+                if not ccache_path.is_file():
+                    log.error(f'Kerberos ccache file not found: "{ccache_path}"')
+                    sys.exit(1)
+                os.environ["KRB5CCNAME"] = str(ccache_path.resolve())
+                log.debug(f"Using Kerberos ccache from -K/--ccache: {os.environ['KRB5CCNAME']}")
+
+            elif "KRB5CCNAME" not in os.environ:
+                log.error(
+                    "Kerberos authentication requested (-k) but no ccache is available. "
+                    "Either set KRB5CCNAME in the environment, or pass one directly with -K/--ccache <file>. "
+                    "Obtain a ticket first with e.g. `kinit user@DOMAIN` or impacket's `getTGT.py`."
+                )
+                sys.exit(1)
+
+            else:
+                # KRB5CCNAME is set -- make sure it actually points to a usable file.
+                # Only validate file-backed caches (bare "/path", or "FILE:/path");
+                # other valid ccache types (KEYRING:, DIR:, MEMORY:, API:) aren't
+                # files on disk at all, so there's nothing to check here -- let
+                # impacket/krb5 handle those natively, as before.
+                raw = os.environ["KRB5CCNAME"]
+                non_file_prefixes = ("KEYRING:", "DIR:", "MEMORY:", "API:")
+                if raw.upper().startswith(non_file_prefixes):
+                    log.debug(f"Using Kerberos ccache from KRB5CCNAME (non-file type, not validated): {raw}")
+                else:
+                    # (impacket silently fails, so validate up front instead of letting it fail inside SMB login)
+                    ccache_path = pathlib.Path(raw.removeprefix("FILE:")).expanduser()
+                    if not ccache_path.is_file():
+                        log.error(
+                            f'KRB5CCNAME is set to "{raw}" but that file does not exist '
+                            f'(resolved path: "{ccache_path}"). Run `kinit` / `getTGT.py` to create it, '
+                            "or point -K/--ccache at the correct file."
+                        )
+                        sys.exit(1)
+                    log.debug(f"Using Kerberos ccache from KRB5CCNAME: {ccache_path}")
 
         # Parse date filters
         if options.modified_after:

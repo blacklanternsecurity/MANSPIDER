@@ -71,10 +71,16 @@ sudo apt install libreoffice
 docker run --rm -v ./manspider:/root/.manspider blacklanternsecurity/manspider --help
 ```
 
-Note there is also a helper script `manspider.sh` which will automatically mount volumes for manspider's `loot` and `logs` directories, making it a bit more convenient to run:
+Note there is also a helper script `manspider.sh` which will automatically mount volumes for manspider's `loot` and `logs` directories, as well as your home directory (read-only, so absolute target-file and Kerberos ccache paths work) and `KRB5CCNAME`/`krb5.conf` if set, making it a bit more convenient to run:
 
 ```bash
 ./manspider.sh --help
+```
+
+By default this pulls and runs the published `blacklanternsecurity/manspider` image. To instead build and run from this checkout's source (e.g. when testing local changes), set `MANSPIDER_LOCAL_BUILD=1`:
+
+```bash
+MANSPIDER_LOCAL_BUILD=1 ./manspider.sh --help
 ```
 
 ### Example #1: Search the network for filenames that may contain creds
@@ -202,6 +208,7 @@ options:
                         maximum depth to spider (default: 10)
   -H, --hash HASH       NTLM hash for authentication
   -k, --kerberos        Use Kerberos authentication. Grabs credentials from ccache file (KRB5CCNAME) based on target parameters
+  -K, --ccache FILE     Path to a Kerberos ccache file to use (sets KRB5CCNAME for this run; overrides any existing KRB5CCNAME env var)
   -aesKey, --aes-key HEX
                         AES key to use for Kerberos Authentication (128 or 256 bits)
   -dc-ip, --dc-ip IP    IP Address of the domain controller. If omitted it will use the domain part (FQDN) specified in the target parameter

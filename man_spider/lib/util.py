@@ -3,12 +3,56 @@ import re
 import string
 import random
 import logging
+import threading
 import ipaddress
 from pathlib import Path
 from dataclasses import dataclass
 from charset_normalizer import from_bytes
 
 log = logging.getLogger("manspider.util")
+
+
+def run_with_timeout(func, timeout_seconds, *args, **kwargs):
+    """
+    Run func(*args, **kwargs) with a hard wall-clock timeout.
+
+    This exists because DNS resolution (socket.getaddrinfo(), used internally
+    by impacket's SMBConnection() when it connects) is NOT bounded by the
+    `timeout=` kwarg impacket itself accepts -- that only covers the TCP
+    connect/recv phase. A garbage or unresolvable hostname (e.g. a bad
+    target-list entry) can therefore hang far longer than any configured
+    timeout, potentially for minutes.
+
+    NOTE: the timeout param is named `timeout_seconds`, not `timeout` --
+    callers commonly need to forward their own `timeout=` kwarg through to
+    func() via **kwargs (e.g. impacket's SMBConnection(..., timeout=10)), and
+    a same-named wrapper param would collide with that ("got multiple values
+    for argument 'timeout'").
+
+    Runs func() in a daemon thread so a stuck call can never block process
+    exit, and raises TimeoutError if it doesn't finish in time. Note the
+    underlying thread is NOT killed (Python can't safely do that) -- it's
+    simply abandoned and will keep running until the OS resolver itself
+    gives up, but the caller is freed immediately.
+    """
+    result = []
+    error = []
+
+    def _target():
+        try:
+            result.append(func(*args, **kwargs))
+        except Exception as e:
+            error.append(e)
+
+    t = threading.Thread(target=_target, daemon=True)
+    t.start()
+    t.join(timeout_seconds)
+
+    if t.is_alive():
+        raise TimeoutError(f"Timed out after {timeout_seconds}s waiting for {getattr(func, '__name__', func)}")
+    if error:
+        raise error[0]
+    return result[0]
 
 
 @dataclass
@@ -73,7 +117,8 @@ def str_to_list(s):
             for line in lines:
                 if line:
                     l.add(line)
-    except OSError:
+    except OSError as e:
+        log.warning(f'Could not open "{s}" as a target file ({e}); treating it as a hostname instead')
         l.add(s)
 
     return list(l)
