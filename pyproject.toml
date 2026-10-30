@@ -31,6 +31,9 @@ lint.ignore = ["E402", "E711", "E712", "E713", "E721", "E722", "E741", "F403", "
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
