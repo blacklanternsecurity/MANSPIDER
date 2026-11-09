@@ -3,6 +3,7 @@ updates:
   # Monitor Python dependencies (uv)
   - package-ecosystem: "uv"
     directory: "/"
+    target-branch: "dev"
     schedule:
       interval: "weekly"
     labels:
@@ -12,6 +13,7 @@ updates:
   # Monitor GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "dev"
     schedule:
       interval: "weekly"
     groups:
