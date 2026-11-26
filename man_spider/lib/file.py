@@ -1,3 +1,5 @@
+import os
+import tempfile
 from pathlib import Path
 
 from man_spider.lib.util import *
@@ -10,7 +12,7 @@ class RemoteFile:
         Passed from a spiderling up to its parent spide
     r"""
 
-    def __init__(self, name, share, target, size=0):
+    def __init__(self, name, share, target, size=0, tmp_dir=None):
 
         self.share = share
         self.target = target
@@ -18,8 +20,9 @@ class RemoteFile:
         self.size = size
         self.smb_client = None
 
-        file_suffix = Path(name).suffix.lower()
-        self.tmp_filename = Path("/tmp/.manspider") / (random_string(15) + file_suffix)
+        self.tmp_dir = Path(tmp_dir) if tmp_dir is not None else Path(tempfile.gettempdir())
+        self.file_suffix = Path(name).suffix.lower()
+        self.tmp_filename = None
 
     def get(self, smb_client=None):
         """
@@ -32,8 +35,17 @@ class RemoteFile:
         if smb_client is None and self.smb_client is None:
             raise FileRetrievalError("Please specify smb_client")
 
+        if self.tmp_filename is None:
+            fd, tmp_filename = tempfile.mkstemp(
+                dir=self.tmp_dir,
+                prefix="manspider-",
+                suffix=self.file_suffix,
+            )
+            os.close(fd)
+            self.tmp_filename = Path(tmp_filename)
+
         # memfile = io.BytesIO()
-        with open(str(self.tmp_filename), "wb") as f:
+        with open(self.tmp_filename, "wb") as f:
             try:
                 smb_client.conn.getFile(self.share, self.name, f.write)
             except Exception as e:

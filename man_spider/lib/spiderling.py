@@ -206,6 +206,12 @@ class Spiderling:
                     if not self.parent.no_download:
                         self.save_file(file)
 
+            # wait for the last parser before the parent removes the temporary directory
+            try:
+                self.parser_process.join()
+            except AttributeError:
+                pass
+
         log.info(f"Finished spidering {self.target}")
 
     @property
@@ -360,7 +366,13 @@ class Spiderling:
 
                     # make the RemoteFile object (the file won't be read yet)
                     full_path_fixed = full_path.lstrip("\\")
-                    remote_file = RemoteFile(full_path_fixed, share, self.target, size=filesize)
+                    remote_file = RemoteFile(
+                        full_path_fixed,
+                        share,
+                        self.target,
+                        size=filesize,
+                        tmp_dir=self.parent.tmp_dir,
+                    )
 
                     # if it's a non-empty file that's smaller than the size limit
                     if filesize > 0 and filesize < self.parent.max_filesize:

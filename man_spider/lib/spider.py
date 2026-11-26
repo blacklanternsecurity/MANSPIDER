@@ -1,6 +1,8 @@
 import re
 import queue
+import shutil
 import logging
+import tempfile
 from time import sleep
 import multiprocessing
 from pathlib import Path
@@ -71,9 +73,8 @@ class MANSPIDER:
         # {target: SMBClient() ...}
         self.smb_client_cache = dict()
 
-        # directory to store documents when searching contents
-        self.tmp_dir = Path("/tmp/.manspider")
-        self.tmp_dir.mkdir(exist_ok=True)
+        # private directory to store documents when searching contents
+        self.tmp_dir = Path(tempfile.mkdtemp(prefix="manspider-"))
 
         # directory to store matching documents
         self.loot_dir = Path.home() / ".manspider" / "loot"
@@ -103,6 +104,17 @@ class MANSPIDER:
         return state
 
     def start(self):
+        try:
+            self._start()
+        finally:
+            self.cleanup()
+
+    def cleanup(self):
+        """Remove the private temporary directory used for downloaded files."""
+
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
+
+    def _start(self):
 
         for target in self.targets:
             try:
